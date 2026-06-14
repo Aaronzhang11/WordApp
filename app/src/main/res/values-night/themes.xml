@@ -1,0 +1,21 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- 继承 MaterialComponents 暗色基类 -->
+    <style name="Theme.WordApp" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:windowBackground">@color/colorBackground</item>
+
+        <!-- 状态栏适配 -->
+        <item name="statusBarBackground">@color/colorBackground</item>
+        <!-- 关闭亮色状态栏图标属性，确保暗底下的系统图标显示为白色 -->
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+    </style>
+
+    <!-- 暗色模式下的卡片投影与背景属性 -->
+    <style name="Widget.WordApp.CardView" parent="Widget.MaterialComponents.CardView">
+        <item name="cardElevation">2dp</item> <!-- 适当降低暗色背景下的阴影高度 -->
+        <item name="cardCornerRadius">12dp</item>
+        <item name="cardBackgroundColor">@color/colorSurface</item>
+    </style>
+</resources>

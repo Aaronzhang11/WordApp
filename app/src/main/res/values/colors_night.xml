@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<!--    &lt;!&ndash; 暗色模式下的主色与强调色（调低了饱和度以保证可读性） &ndash;&gt;
+    <color name="colorPrimary">#90CDF4</color>
+    <color name="colorPrimaryDark">#1A365D</color>
+    <color name="colorAccent">#4FD1C5</color>
+
+    &lt;!&ndash; 背景与卡片色 &ndash;&gt;
+    <color name="colorBackground">#1A202C</color> &lt;!&ndash; 深灰底色 &ndash;&gt;
+    <color name="colorSurface">#2D3748</color>    &lt;!&ndash; 较浅的卡片色 &ndash;&gt;
+
+    &lt;!&ndash; 文本色 &ndash;&gt;
+    <color name="textPrimary">#EDF2F7</color>
+    <color name="textSecondary">#A0AEC0</color>
+    <color name="textOnPrimary">#1A202C</color>
+
+    &lt;!&ndash; 语义状态色 &ndash;&gt;
+    <color name="colorSuccess">#48BB78</color> &lt;!&ndash; 适度柔和的绿色 &ndash;&gt;
+    <color name="colorDanger">#F56565</color>  &lt;!&ndash; 适度柔和的红色 &ndash;&gt;
+    <color name="colorWarning">#ED8936</color> &lt;!&ndash; 适度柔和的橙色 &ndash;&gt;
+
+    &lt;!&ndash; 分割线 &ndash;&gt;
+    <color name="colorDivider">#4A5568</color>-->
+</resources>

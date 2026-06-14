@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 主色调与暗色 -->
+    <color name="colorPrimary">#2C5282</color>
+    <color name="colorPrimaryDark">#1A365D</color>
+    <color name="colorAccent">#319795</color>
+
+    <!-- 背景与卡片色 -->
+    <color name="colorBackground">#F7FAFC</color>
+    <color name="colorSurface">#FFFFFF</color>
+
+    <!-- 文本色 -->
+    <color name="textPrimary">#2D3748</color>
+    <color name="textSecondary">#718096</color>
+    <color name="textOnPrimary">#FFFFFF</color>
+
+    <!-- 语义状态色 -->
+    <color name="colorSuccess">#38A169</color> <!-- 认识 / 正确 -->
+    <color name="colorDanger">#E53E3E</color>  <!-- 不认识 / 错误 -->
+    <color name="colorWarning">#DD6B20</color> <!-- 模糊 -->
+
+    <!-- 分割线 -->
+    <color name="colorDivider">#E2E8F0</color>
+</resources>

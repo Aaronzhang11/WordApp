@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/colorBackground"
+    android:padding="16dp">
+
+    <!-- 顶部进度条 -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="10"
+        android:progress="1"
+        android:progressTint="@color/colorPrimary"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- 题干显示区域 -->
+    <TextView
+        android:id="@+id/tvQuestionTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="请根据以下释义选择正确的英文单词："
+        android:textColor="@color/textSecondary"
+        android:textSize="14sp"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:id="@+id/tvQuestionContent"
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:gravity="center"
+        android:text="释义加载中..."
+        android:textColor="@color/textPrimary"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:background="@android:color/white"
+        android:padding="16dp"
+        android:layout_marginBottom="24dp"/>
+
+    <!-- 选择题选项容器 -->
+    <LinearLayout
+        android:id="@+id/layoutOptions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="visible">
+
+        <Button
+            android:id="@+id/btnOptionA"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="Option A"
+            android:layout_marginBottom="8dp"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+
+        <Button
+            android:id="@+id/btnOptionB"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="Option B"
+            android:layout_marginBottom="8dp"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+
+        <Button
+            android:id="@+id/btnOptionC"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="Option C"
+            android:layout_marginBottom="8dp"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+
+        <Button
+            android:id="@+id/btnOptionD"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="Option D"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+    </LinearLayout>
+
+    <!-- 听写输入框容器（仅在听写模式激活） -->
+    <LinearLayout
+        android:id="@+id/layoutDictation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone">
+
+        <ImageButton
+            android:id="@+id/btnSpeak"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:src="@android:drawable/ic_btn_speak_now"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_marginBottom="16dp"
+            contentDescription="播放发音"/>
+
+        <EditText
+            android:id="@+id/etDictInput"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:hint="在此处输入英文单词"
+            android:inputType="textUri"
+            android:singleLine="true"
+            android:padding="8dp"
+            android:background="@android:drawable/editbox_background_normal"
+            android:layout_marginBottom="16dp"/>
+
+        <Button
+            android:id="@+id/btnSubmitDict"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="提交答案"
+            android:backgroundTint="@color/colorPrimary"/>
+    </LinearLayout>
+</LinearLayout>
