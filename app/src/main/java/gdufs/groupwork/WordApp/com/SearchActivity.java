@@ -6,17 +6,23 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+
 import androidx.appcompat.app.AppCompatActivity;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class SearchActivity extends AppCompatActivity {
+
+    private Button btnBack;
     private EditText etSearchInput;
     private ListView lvSearchResults;
     private DatabaseHelper dbHelper;
-    private List<String> resultList = new ArrayList<>();
+
+    private final List<String> resultList = new ArrayList<>();
     private ArrayAdapter<String> listAdapter;
 
     @Override
@@ -25,16 +31,20 @@ public class SearchActivity extends AppCompatActivity {
         setContentView(R.layout.activity_search);
 
         dbHelper = new DatabaseHelper(this);
+
+        btnBack = findViewById(R.id.btnBack);
         etSearchInput = findViewById(R.id.etSearchInput);
         lvSearchResults = findViewById(R.id.lvSearchResults);
 
         listAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, resultList);
         lvSearchResults.setAdapter(listAdapter);
 
-        // 监听输入框变化，实现实时双向模糊检索机制
+        btnBack.setOnClickListener(v -> finish());
+
         etSearchInput.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -42,12 +52,14 @@ public class SearchActivity extends AppCompatActivity {
             }
 
             @Override
-            public void afterTextChanged(Editable s) {}
+            public void afterTextChanged(Editable s) {
+            }
         });
     }
 
     private void performQuery(String query) {
         resultList.clear();
+
         if (query.isEmpty()) {
             listAdapter.notifyDataSetChanged();
             return;
@@ -56,15 +68,16 @@ public class SearchActivity extends AppCompatActivity {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         Cursor cursor;
 
-        // 判断当前输入的语言是否为英文（若首字母为英文字符，则进行英文查中文检索，否则进行中文查英文检索）
         if (query.matches("^[a-zA-Z].*")) {
             cursor = db.rawQuery(
                     "SELECT word, translation FROM ecdict WHERE word LIKE ? LIMIT 30",
-                    new String[]{query + "%"});
+                    new String[]{query + "%"}
+            );
         } else {
             cursor = db.rawQuery(
                     "SELECT word, translation FROM ecdict WHERE translation LIKE ? LIMIT 30",
-                    new String[]{"%" + query + "%"});
+                    new String[]{"%" + query + "%"}
+            );
         }
 
         while (cursor.moveToNext()) {
@@ -72,6 +85,7 @@ public class SearchActivity extends AppCompatActivity {
             String translation = cursor.getString(1);
             resultList.add(word + "\n" + translation);
         }
+
         cursor.close();
         listAdapter.notifyDataSetChanged();
     }
