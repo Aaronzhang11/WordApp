@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "gdufs.groupwork.WordApp.com"
+    //namespace = "gdufs.groupwork.WordApp.com"
     compileSdk = 33
 
     defaultConfig {
