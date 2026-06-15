@@ -96,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
         }
         c2.close();
 
-        // 3. 统计词库中导入的底层静态词条总量
+
         Cursor c3 = db.rawQuery("SELECT COUNT(*) FROM ecdict", null);
         if (c3.moveToFirst()) {
             tvTotalCount.setText(String.valueOf(c3.getInt(0)));
