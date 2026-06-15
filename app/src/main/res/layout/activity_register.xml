@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="28dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="注册本地账号"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="@color/colorPrimary"
+            android:gravity="center"
+            android:layout_marginTop="60dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="账号只保存在本机，用于区分不同用户的学习记录"
+            android:textSize="14sp"
+            android:textColor="@color/textSecondary"
+            android:gravity="center"
+            android:layout_marginBottom="36dp" />
+
+        <EditText
+            android:id="@+id/etUsername"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:hint="请输入用户名"
+            android:singleLine="true"
+            android:inputType="text"
+            android:padding="12dp"
+            android:background="@android:color/white"
+            android:layout_marginBottom="16dp" />
+
+        <EditText
+            android:id="@+id/etPassword"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:hint="请输入密码"
+            android:singleLine="true"
+            android:inputType="textPassword"
+            android:padding="12dp"
+            android:background="@android:color/white"
+            android:layout_marginBottom="16dp" />
+
+        <EditText
+            android:id="@+id/etConfirmPassword"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:hint="请再次输入密码"
+            android:singleLine="true"
+            android:inputType="textPassword"
+            android:padding="12dp"
+            android:background="@android:color/white"
+            android:layout_marginBottom="28dp" />
+
+        <Button
+            android:id="@+id/btnRegister"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="立即注册"
+            android:textSize="16sp"
+            android:backgroundTint="@color/colorPrimary"
+            android:textColor="@android:color/white"
+            android:layout_marginBottom="14dp" />
+
+        <Button
+            android:id="@+id/btnGoLogin"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="已有账号，返回登录"
+            android:textSize="16sp"
+            android:backgroundTint="@color/colorDivider"
+            android:textColor="@color/textPrimary" />
+
+    </LinearLayout>
+
+</ScrollView>

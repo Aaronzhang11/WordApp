@@ -9,14 +9,26 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
+
 public class MainActivity extends AppCompatActivity {
     private TextView tvToStudyCount, tvMasteredCount, tvTotalCount;
     private DatabaseHelper dbHelper;
+    private UserSessionManager sessionManager;
+    private TextView tvCurrentUser;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        sessionManager = new UserSessionManager(this);
+
+        if (!sessionManager.isLoggedIn()) {
+            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            return;
+        }
 
         dbHelper = new DatabaseHelper(this);
         initViews();
@@ -27,6 +39,17 @@ public class MainActivity extends AppCompatActivity {
         tvToStudyCount = findViewById(R.id.tvToStudyCount);
         tvMasteredCount = findViewById(R.id.tvMasteredCount);
         tvTotalCount = findViewById(R.id.tvTotalCount);
+
+        tvCurrentUser = findViewById(R.id.tvCurrentUser);
+        tvCurrentUser.setText("当前用户：" + sessionManager.getCurrentUsername());
+
+        findViewById(R.id.btnLogout).setOnClickListener(v -> {
+            sessionManager.logout();
+
+            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+        });
 
         findViewById(R.id.btnStudy).setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, StudyActivity.class);

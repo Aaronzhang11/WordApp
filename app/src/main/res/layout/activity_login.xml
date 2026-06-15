@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="28dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="本地单词本"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:textColor="@color/colorPrimary"
+            android:gravity="center"
+            android:layout_marginTop="70dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="登录本地账号，管理自己的学习记录"
+            android:textSize="14sp"
+            android:textColor="@color/textSecondary"
+            android:gravity="center"
+            android:layout_marginBottom="38dp" />
+
+        <EditText
+            android:id="@+id/etUsername"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:hint="请输入用户名"
+            android:singleLine="true"
+            android:inputType="text"
+            android:padding="12dp"
+            android:background="@android:color/white"
+            android:layout_marginBottom="16dp" />
+
+        <EditText
+            android:id="@+id/etPassword"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:hint="请输入密码"
+            android:singleLine="true"
+            android:inputType="textPassword"
+            android:padding="12dp"
+            android:background="@android:color/white"
+            android:layout_marginBottom="28dp" />
+
+        <Button
+            android:id="@+id/btnLogin"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="登录"
+            android:textSize="16sp"
+            android:backgroundTint="@color/colorPrimary"
+            android:textColor="@android:color/white"
+            android:layout_marginBottom="14dp" />
+
+        <Button
+            android:id="@+id/btnGoRegister"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="没有账号，去注册"
+            android:textSize="16sp"
+            android:backgroundTint="@color/colorDivider"
+            android:textColor="@color/textPrimary"
+            android:layout_marginBottom="14dp" />
+
+        <Button
+            android:id="@+id/btnGuestLogin"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="游客模式进入"
+            android:textSize="16sp"
+            android:backgroundTint="@android:color/white"
+            android:textColor="@color/textPrimary" />
+
+    </LinearLayout>
+
+</ScrollView>

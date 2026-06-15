@@ -117,6 +117,26 @@
     </com.google.android.material.card.MaterialCardView>
 
     <!-- 功能导航按钮 -->
+    <TextView
+        android:id="@+id/tvCurrentUser"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="当前用户："
+        android:textSize="16sp"
+        android:textColor="@color/textSecondary"
+        android:gravity="center"
+        android:layout_marginBottom="12dp" />
+
+    <Button
+        android:id="@+id/btnLogout"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="退出登录"
+        android:textSize="15sp"
+        android:backgroundTint="@color/colorDivider"
+        android:textColor="@color/textPrimary"
+        android:layout_marginBottom="20dp" />
+
     <Button
         android:id="@+id/btnStudy"
         android:layout_width="match_parent"
