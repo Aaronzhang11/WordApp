@@ -14,8 +14,6 @@ import java.io.InputStream;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "word_app.db";
-
-    // 原来是 1，这里改成 2，表示数据库结构升级了
     private static final int DATABASE_VERSION = 2;
 
     private final Context context;
@@ -79,11 +77,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private void createUserTables(SQLiteDatabase db) {
 
-        /*
-         * 1. 本地用户表
-         * 注意：这里不是云端账号，只是本地账号。
-         * 不同用户登录后，可以拥有不同的学习记录、单词本、测试记录。
-         */
+        // 1. 本地用户表：不是云端账号，只用于本机区分不同用户的数据
         db.execSQL("CREATE TABLE IF NOT EXISTS user_info (" +
                 "user_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "username TEXT UNIQUE NOT NULL, " +
@@ -91,25 +85,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "create_time INTEGER NOT NULL, " +
                 "last_login_time INTEGER DEFAULT 0)");
 
-        /*
-         * 插入一个默认本地用户。
-         * 作用：在登录注册页面还没写完之前，旧的学习功能暂时不会因为 user_id 为空而报错。
-         * 后面真正登录后，会使用当前登录用户的 user_id。
-         */
+        // 插入默认游客用户，避免游客模式 user_id = 0 找不到对应用户
         db.execSQL("INSERT OR IGNORE INTO user_info " +
                 "(user_id, username, password_hash, create_time, last_login_time) " +
                 "VALUES (0, 'guest', 'guest', 0, 0)");
 
-        /*
-         * 2. 学习记录表
-         * 关键变化：
-         * 原来是 word TEXT UNIQUE
-         * 现在改成 user_id + word 联合唯一
-         *
-         * 意思是：
-         * 同一个用户不能重复学习同一个单词；
-         * 但不同用户可以分别拥有 apple 的学习记录。
-         */
+        // 2. 学习记录表：新数据库会按这个结构创建
         db.execSQL("CREATE TABLE IF NOT EXISTS study_record (" +
                 "record_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "user_id INTEGER NOT NULL DEFAULT 0, " +
@@ -122,17 +103,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "FOREIGN KEY(user_id) REFERENCES user_info(user_id) ON DELETE CASCADE, " +
                 "FOREIGN KEY(word) REFERENCES ecdict(word))");
 
-        /*
-         * 3. 单词本表
-         * 关键变化：
-         * 原来是 book_name TEXT UNIQUE
-         * 现在改成 user_id + book_name 联合唯一
-         *
-         * 意思是：
-         * A 用户可以创建“四级错词本”；
-         * B 用户也可以创建“四级错词本”；
-         * 两者互不冲突。
-         */
+        // 3. 单词本表：新数据库会按这个结构创建
         db.execSQL("CREATE TABLE IF NOT EXISTS word_book (" +
                 "book_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "user_id INTEGER NOT NULL DEFAULT 0, " +
@@ -141,10 +112,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "UNIQUE(user_id, book_name), " +
                 "FOREIGN KEY(user_id) REFERENCES user_info(user_id) ON DELETE CASCADE)");
 
-        /*
-         * 4. 单词本与单词的关联表
-         * 这里不直接加 user_id，因为 book_id 已经属于某个用户。
-         */
+        // 4. 单词本和单词的关联表
         db.execSQL("CREATE TABLE IF NOT EXISTS book_word_relation (" +
                 "relation_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "book_id INTEGER NOT NULL, " +
@@ -154,10 +122,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "FOREIGN KEY(book_id) REFERENCES word_book(book_id) ON DELETE CASCADE, " +
                 "FOREIGN KEY(word) REFERENCES ecdict(word))");
 
-        /*
-         * 5. 测试记录表
-         * 每条测试成绩都绑定 user_id。
-         */
+        // 5. 测试记录表：新数据库会按这个结构创建
         db.execSQL("CREATE TABLE IF NOT EXISTS test_record (" +
                 "test_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "user_id INTEGER NOT NULL DEFAULT 0, " +
@@ -166,9 +131,77 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "correct_count INTEGER NOT NULL, " +
                 "test_date INTEGER NOT NULL, " +
                 "FOREIGN KEY(user_id) REFERENCES user_info(user_id) ON DELETE CASCADE)");
+
+        /*
+         * 关键修复：
+         * 如果 assets/word_app.db 里已经有旧版 study_record / word_book / test_record，
+         * CREATE TABLE IF NOT EXISTS 不会修改旧表结构。
+         * 所以这里手动检查旧表是否缺 user_id，缺就 ALTER TABLE 添加。
+         */
+        upgradeOldUserTables(db);
     }
 
-    /*
+    /**
+     * 兼容旧数据库表结构：
+     * 旧版 study_record / word_book / test_record 可能没有 user_id。
+     */
+    private void upgradeOldUserTables(SQLiteDatabase db) {
+        addColumnIfNotExists(db, "study_record", "user_id", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfNotExists(db, "word_book", "user_id", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfNotExists(db, "test_record", "user_id", "INTEGER NOT NULL DEFAULT 0");
+    }
+
+    /**
+     * 如果某个表缺少某列，就添加该列
+     */
+    private void addColumnIfNotExists(SQLiteDatabase db, String tableName, String columnName, String columnType) {
+        if (!tableExists(db, tableName)) {
+            return;
+        }
+
+        if (!columnExists(db, tableName, columnName)) {
+            db.execSQL("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnType);
+        }
+    }
+
+    /**
+     * 判断表是否存在
+     */
+    private boolean tableExists(SQLiteDatabase db, String tableName) {
+        Cursor cursor = db.rawQuery(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                new String[]{tableName}
+        );
+
+        boolean exists = cursor.moveToFirst();
+        cursor.close();
+
+        return exists;
+    }
+
+    /**
+     * 判断某个表里是否有某个字段
+     */
+    private boolean columnExists(SQLiteDatabase db, String tableName, String columnName) {
+        Cursor cursor = db.rawQuery("PRAGMA table_info(" + tableName + ")", null);
+
+        boolean exists = false;
+
+        while (cursor.moveToNext()) {
+            String name = cursor.getString(cursor.getColumnIndexOrThrow("name"));
+
+            if (columnName.equals(name)) {
+                exists = true;
+                break;
+            }
+        }
+
+        cursor.close();
+
+        return exists;
+    }
+
+    /**
      * 判断用户名是否已经存在
      */
     public boolean isUsernameExists(String username) {
@@ -185,9 +218,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return exists;
     }
 
-    /*
+    /**
      * 注册本地用户
-     * passwordHash 是加密后的密码，不建议保存明文密码。
      */
     public boolean registerUser(String username, String passwordHash) {
         if (isUsernameExists(username)) {
@@ -207,7 +239,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return result != -1;
     }
 
-    /*
+    /**
      * 检查登录是否成功
      */
     public boolean checkLogin(String username, String passwordHash) {
@@ -228,9 +260,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return success;
     }
 
-    /*
+    /**
      * 根据用户名获取 user_id
-     * 登录成功后需要保存这个 user_id，后续学习记录、单词本、测试记录都靠它区分用户。
      */
     public int getUserIdByUsername(String username) {
         SQLiteDatabase db = getReadableDatabase();
@@ -251,9 +282,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return userId;
     }
 
-    /*
+    /**
      * 根据 user_id 获取用户名
-     * 后面首页可以用它显示“当前用户：xxx”。
      */
     public String getUsernameById(int userId) {
         SQLiteDatabase db = getReadableDatabase();
@@ -274,7 +304,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return username;
     }
 
-    /*
+    /**
      * 更新最后登录时间
      */
     private void updateLastLoginTime(String username) {

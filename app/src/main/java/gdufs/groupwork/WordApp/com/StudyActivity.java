@@ -1,30 +1,37 @@
 package gdufs.groupwork.WordApp.com;
 
-import android.animation.Animator;
-import android.animation.AnimatorInflater;
-import android.animation.AnimatorListenerAdapter;
 import android.content.ContentValues;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class StudyActivity extends AppCompatActivity {
+
     private TextView tvWord, tvPhonetic, tvTranslation;
     private View cardFront, cardBack;
     private LinearLayout controlPanel;
     private ImageButton btnFavorite, btnDelete;
+
     private DatabaseHelper dbHelper;
+    private UserSessionManager sessionManager;
+    private int currentUserId;
+
     private boolean isBackVisible = false;
+
+    private final List<WordItem> studyQueue = new ArrayList<>();
+    private int currentIndex = 0;
 
     private static class WordItem {
         String word;
@@ -33,15 +40,23 @@ public class StudyActivity extends AppCompatActivity {
         int level;
     }
 
-    private List<WordItem> studyQueue = new ArrayList<>();
-    private int currentIndex = 0;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_study);
 
         dbHelper = new DatabaseHelper(this);
+        sessionManager = new UserSessionManager(this);
+
+        if (!sessionManager.isLoggedIn()) {
+            Intent intent = new Intent(StudyActivity.this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            return;
+        }
+
+        currentUserId = sessionManager.getCurrentUserId();
+
         initViews();
         loadStudyQueue();
         showCurrentWord();
@@ -51,15 +66,17 @@ public class StudyActivity extends AppCompatActivity {
         tvWord = findViewById(R.id.tvWord);
         tvPhonetic = findViewById(R.id.tvPhonetic);
         tvTranslation = findViewById(R.id.tvTranslation);
+
         cardFront = findViewById(R.id.layoutCardFront);
         cardBack = findViewById(R.id.layoutCardBack);
         controlPanel = findViewById(R.id.controlPanel);
+
         btnFavorite = findViewById(R.id.btnFavorite);
         btnDelete = findViewById(R.id.btnDelete);
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
 
-        // 卡片翻转交互逻辑 (纯本地三维翻转模拟效果)
+        // 点击单词卡片后翻转，显示中文释义和操作按钮
         findViewById(R.id.wordCardView).setOnClickListener(v -> flipCard());
 
         findViewById(R.id.btnRemembered).setOnClickListener(v -> processAnswer(true));
@@ -70,15 +87,25 @@ public class StudyActivity extends AppCompatActivity {
     }
 
     private void loadStudyQueue() {
+        studyQueue.clear();
+
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         long now = System.currentTimeMillis();
 
-        // 查找未忽略、到时间的词库单词
+        // 1. 优先加载当前用户已经到复习时间的单词
         Cursor cursor = db.rawQuery(
-                "SELECT e.word, e.phonetic, e.translation, s.master_level FROM study_record s " +
+                "SELECT e.word, e.phonetic, e.translation, s.master_level " +
+                        "FROM study_record s " +
                         "JOIN ecdict e ON s.word = e.word " +
-                        "WHERE s.is_ignored = 0 AND s.next_review_time <= ? LIMIT 50",
-                new String[]{String.valueOf(now)});
+                        "WHERE s.user_id = ? " +
+                        "AND s.is_ignored = 0 " +
+                        "AND s.next_review_time <= ? " +
+                        "LIMIT 50",
+                new String[]{
+                        String.valueOf(currentUserId),
+                        String.valueOf(now)
+                }
+        );
 
         while (cursor.moveToNext()) {
             WordItem item = new WordItem();
@@ -88,14 +115,20 @@ public class StudyActivity extends AppCompatActivity {
             item.level = cursor.getInt(3);
             studyQueue.add(item);
         }
+
         cursor.close();
 
-        // 若今日无复习计划，随机生成一些未学的新词任务
+        // 2. 如果当前用户没有到期复习任务，就给当前用户随机生成一些未学新词
         if (studyQueue.isEmpty()) {
             Cursor randomCursor = db.rawQuery(
-                    "SELECT word, phonetic, translation FROM ecdict " +
-                            "WHERE word NOT IN (SELECT word FROM study_record) " +
-                            "ORDER BY RANDOM() LIMIT 20", null);
+                    "SELECT word, phonetic, translation " +
+                            "FROM ecdict " +
+                            "WHERE word NOT IN (" +
+                            "SELECT word FROM study_record WHERE user_id = ?" +
+                            ") " +
+                            "ORDER BY RANDOM() LIMIT 20",
+                    new String[]{String.valueOf(currentUserId)}
+            );
 
             while (randomCursor.moveToNext()) {
                 WordItem item = new WordItem();
@@ -105,6 +138,7 @@ public class StudyActivity extends AppCompatActivity {
                 item.level = 0;
                 studyQueue.add(item);
             }
+
             randomCursor.close();
         }
     }
@@ -117,11 +151,22 @@ public class StudyActivity extends AppCompatActivity {
         }
 
         WordItem item = studyQueue.get(currentIndex);
-        tvWord.setText(item.word);
-        tvPhonetic.setText(item.phonetic);
-        tvTranslation.setText(item.translation);
 
-        // 重置为卡片正面状态
+        tvWord.setText(item.word);
+
+        if (item.phonetic == null || item.phonetic.trim().isEmpty()) {
+            tvPhonetic.setText("暂无音标");
+        } else {
+            tvPhonetic.setText(item.phonetic);
+        }
+
+        if (item.translation == null || item.translation.trim().isEmpty()) {
+            tvTranslation.setText("暂无释义");
+        } else {
+            tvTranslation.setText(item.translation);
+        }
+
+        // 每次展示新单词时，重置为正面
         cardFront.setVisibility(View.VISIBLE);
         cardBack.setVisibility(View.GONE);
         controlPanel.setVisibility(View.INVISIBLE);
@@ -129,9 +174,10 @@ public class StudyActivity extends AppCompatActivity {
     }
 
     private void flipCard() {
-        if (isBackVisible) return;
+        if (isBackVisible) {
+            return;
+        }
 
-        // 简易淡入淡出动画过渡
         cardFront.setVisibility(View.GONE);
         cardBack.setVisibility(View.VISIBLE);
         controlPanel.setVisibility(View.VISIBLE);
@@ -139,33 +185,59 @@ public class StudyActivity extends AppCompatActivity {
     }
 
     private void processAnswer(boolean knew) {
-        if (studyQueue.isEmpty()) return;
+        if (studyQueue.isEmpty() || currentIndex >= studyQueue.size()) {
+            return;
+        }
+
         WordItem item = studyQueue.get(currentIndex);
+
         int nextLevel;
         long interval;
 
         if (knew) {
             nextLevel = Math.min(3, item.level + 1);
-            // 艾宾浩斯复习级数区间间隔对应 (毫秒单位)
+
+            // 简化版艾宾浩斯复习间隔
             switch (nextLevel) {
-                case 1: interval = 300000; break;     // 5分钟后
-                case 2: interval = 86400000; break;   // 1天后
-                case 3: interval = 604800000; break;  // 7天后
-                default: interval = 1209600000;       // 14天后
+                case 1:
+                    interval = 5 * 60 * 1000L;          // 5分钟
+                    break;
+                case 2:
+                    interval = 24 * 60 * 60 * 1000L;    // 1天
+                    break;
+                case 3:
+                    interval = 7 * 24 * 60 * 60 * 1000L; // 7天
+                    break;
+                default:
+                    interval = 14 * 24 * 60 * 60 * 1000L; // 14天
+                    break;
             }
         } else {
-            nextLevel = 0; // 重置掌握进度，进入快速复习模式
-            interval = 60000; // 1分钟后重新展示
+            nextLevel = 0;
+            interval = 60 * 1000L; // 1分钟后重新复习
         }
 
         long nextReviewTime = System.currentTimeMillis() + interval;
 
         SQLiteDatabase db = dbHelper.getWritableDatabase();
+
         ContentValues values = new ContentValues();
+        values.put("user_id", currentUserId);
         values.put("word", item.word);
         values.put("master_level", nextLevel);
         values.put("next_review_time", nextReviewTime);
+        values.put("is_ignored", 0);
 
+        if (knew) {
+            values.put("error_count", 0);
+        } else {
+            values.put("error_count", 1);
+        }
+
+        /*
+         * DatabaseHelper 里 study_record 已经设置 UNIQUE(user_id, word)，
+         * 所以这里 replace 时不会影响其他用户同一个单词的记录。
+         */
         db.replace("study_record", null, values);
 
         currentIndex++;
@@ -173,19 +245,47 @@ public class StudyActivity extends AppCompatActivity {
     }
 
     private void confirmDelete() {
-        if (studyQueue.isEmpty()) return;
+        if (studyQueue.isEmpty() || currentIndex >= studyQueue.size()) {
+            return;
+        }
+
         final WordItem item = studyQueue.get(currentIndex);
 
         new AlertDialog.Builder(this)
                 .setTitle("提示")
-                .setMessage("确定要将单词 \"" + item.word + "\" 从学习队列中永久移除吗？")
+                .setMessage("确定要将单词 \"" + item.word + "\" 从当前用户的学习队列中移除吗？")
                 .setPositiveButton("确定", (dialog, which) -> {
                     SQLiteDatabase db = dbHelper.getWritableDatabase();
+
                     ContentValues values = new ContentValues();
                     values.put("is_ignored", 1);
-                    db.update("study_record", values, "word = ?", new String[]{item.word});
 
-                    Toast.makeText(StudyActivity.this, "已从队列中移除", Toast.LENGTH_SHORT).show();
+                    int rows = db.update(
+                            "study_record",
+                            values,
+                            "user_id = ? AND word = ?",
+                            new String[]{
+                                    String.valueOf(currentUserId),
+                                    item.word
+                            }
+                    );
+
+                    /*
+                     * 如果这个词是随机新词，还没写入 study_record，
+                     * update 会影响 0 行，所以这里手动插入一条当前用户的忽略记录。
+                     */
+                    if (rows == 0) {
+                        values.put("user_id", currentUserId);
+                        values.put("word", item.word);
+                        values.put("master_level", 0);
+                        values.put("next_review_time", 0);
+                        values.put("error_count", 0);
+
+                        db.insert("study_record", null, values);
+                    }
+
+                    Toast.makeText(StudyActivity.this, "已从当前用户队列中移除", Toast.LENGTH_SHORT).show();
+
                     currentIndex++;
                     showCurrentWord();
                 })
@@ -194,10 +294,18 @@ public class StudyActivity extends AppCompatActivity {
     }
 
     private void toggleFavorite() {
-        if (studyQueue.isEmpty()) return;
+        if (studyQueue.isEmpty() || currentIndex >= studyQueue.size()) {
+            return;
+        }
+
         WordItem item = studyQueue.get(currentIndex);
-        Toast.makeText(this, "\"" + item.word + "\" 收藏成功", Toast.LENGTH_SHORT).show();
-        btnFavorite.setImageResource(android.provider.ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE.hashCode() % 2 == 0 ?
-                android.R.drawable.btn_star_big_on : android.R.drawable.btn_star_big_off);
+
+        /*
+         * 这里目前只是临时提示。
+         * 真正的收藏功能后面要写入 word_book 和 book_word_relation，
+         * 并且也要绑定 currentUserId。
+         */
+        Toast.makeText(this, "\"" + item.word + "\" 收藏功能后续接入单词本", Toast.LENGTH_SHORT).show();
+        btnFavorite.setImageResource(android.R.drawable.btn_star_big_on);
     }
 }

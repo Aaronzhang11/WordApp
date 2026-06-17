@@ -80,24 +80,38 @@ public class MainActivity extends AppCompatActivity {
     private void loadStatistics() {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         long currentTime = System.currentTimeMillis();
+        int currentUserId = sessionManager.getCurrentUserId();
 
-        // 1. 获取待学习/待复习统计
-        Cursor c1 = db.rawQuery("SELECT COUNT(*) FROM study_record WHERE is_ignored = 0 AND next_review_time <= ?",
-                new String[]{String.valueOf(currentTime)});
+        // 1. 获取当前用户的待学习/待复习统计
+        Cursor c1 = db.rawQuery(
+                "SELECT COUNT(*) FROM study_record " +
+                        "WHERE user_id = ? AND is_ignored = 0 AND next_review_time <= ?",
+                new String[]{
+                        String.valueOf(currentUserId),
+                        String.valueOf(currentTime)
+                }
+        );
+
         if (c1.moveToFirst()) {
             tvToStudyCount.setText(String.valueOf(c1.getInt(0)));
         }
         c1.close();
 
-        // 2. 获取已掌握统计 (master_level = 3)
-        Cursor c2 = db.rawQuery("SELECT COUNT(*) FROM study_record WHERE master_level >= 3", null);
+        // 2. 获取当前用户的已掌握统计 master_level >= 3
+        Cursor c2 = db.rawQuery(
+                "SELECT COUNT(*) FROM study_record " +
+                        "WHERE user_id = ? AND master_level >= 3",
+                new String[]{String.valueOf(currentUserId)}
+        );
+
         if (c2.moveToFirst()) {
             tvMasteredCount.setText(String.valueOf(c2.getInt(0)));
         }
         c2.close();
 
-        //3.统计词库中导入的底层静态词条总量
+        // 3. 词库总量是公共数据，不需要 user_id
         Cursor c3 = db.rawQuery("SELECT COUNT(*) FROM ecdict", null);
+
         if (c3.moveToFirst()) {
             tvTotalCount.setText(String.valueOf(c3.getInt(0)));
         }
