@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="28dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="生成词书"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="@color/colorPrimary"
+            android:gravity="center"
+            android:layout_marginTop="60dp"
+            android:layout_marginBottom="10dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="输入想要学习的单词数量，系统会从本地词库中随机生成当前用户的待学习词书"
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:gravity="center"
+            android:layout_marginBottom="30dp" />
+
+        <TextView
+            android:id="@+id/tvTotalWords"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="词库总量："
+            android:textSize="16sp"
+            android:textColor="@color/textPrimary"
+            android:layout_marginBottom="10dp" />
+
+        <TextView
+            android:id="@+id/tvAvailableWords"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="当前用户可生成新词："
+            android:textSize="16sp"
+            android:textColor="@color/textPrimary"
+            android:layout_marginBottom="24dp" />
+
+        <EditText
+            android:id="@+id/etWordCount"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:hint="请输入生成数量，例如 50"
+            android:inputType="number"
+            android:singleLine="true"
+            android:padding="12dp"
+            android:background="@android:color/white"
+            android:layout_marginBottom="24dp" />
+
+        <Button
+            android:id="@+id/btnGenerate"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="生成并开始背诵"
+            android:textSize="16sp"
+            android:backgroundTint="@color/colorPrimary"
+            android:textColor="@android:color/white"
+            android:layout_marginBottom="14dp" />
+
+        <Button
+            android:id="@+id/btnBack"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="返回主页"
+            android:textSize="16sp"
+            android:backgroundTint="@color/colorDivider"
+            android:textColor="@color/textPrimary" />
+
+    </LinearLayout>
+
+</ScrollView>

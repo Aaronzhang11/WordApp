@@ -138,6 +138,16 @@
         android:layout_marginBottom="20dp" />
 
     <Button
+        android:id="@+id/btnGenerateBook"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="生成词书"
+        android:textSize="16sp"
+        android:backgroundTint="@color/colorPrimary"
+        android:textColor="@android:color/white"
+        android:layout_marginBottom="12dp" />
+
+    <Button
         android:id="@+id/btnStudy"
         android:layout_width="match_parent"
         android:layout_height="56dp"

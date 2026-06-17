@@ -51,6 +51,11 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
+        findViewById(R.id.btnGenerateBook).setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, GenerateBookActivity.class);
+            startActivity(intent);
+        });
+
         findViewById(R.id.btnStudy).setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, StudyActivity.class);
             startActivity(intent);

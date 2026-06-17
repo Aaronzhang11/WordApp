@@ -118,33 +118,17 @@ public class StudyActivity extends AppCompatActivity {
 
         cursor.close();
 
-        // 2. 如果当前用户没有到期复习任务，就给当前用户随机生成一些未学新词
-        if (studyQueue.isEmpty()) {
-            Cursor randomCursor = db.rawQuery(
-                    "SELECT word, phonetic, translation " +
-                            "FROM ecdict " +
-                            "WHERE word NOT IN (" +
-                            "SELECT word FROM study_record WHERE user_id = ?" +
-                            ") " +
-                            "ORDER BY RANDOM() LIMIT 20",
-                    new String[]{String.valueOf(currentUserId)}
-            );
 
-            while (randomCursor.moveToNext()) {
-                WordItem item = new WordItem();
-                item.word = randomCursor.getString(0);
-                item.phonetic = randomCursor.getString(1);
-                item.translation = randomCursor.getString(2);
-                item.level = 0;
-                studyQueue.add(item);
-            }
-
-            randomCursor.close();
-        }
     }
 
     private void showCurrentWord() {
-        if (studyQueue.isEmpty() || currentIndex >= studyQueue.size()) {
+        if (studyQueue.isEmpty()) {
+            Toast.makeText(this, "当前没有待学习单词，请先生成词书", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+
+        if (currentIndex >= studyQueue.size()) {
             Toast.makeText(this, "今日的学习任务已完成！", Toast.LENGTH_LONG).show();
             finish();
             return;
