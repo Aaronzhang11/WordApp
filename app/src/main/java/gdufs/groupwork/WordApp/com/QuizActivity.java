@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.text.method.TransformationMethod;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -14,6 +15,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.IOException;
@@ -25,22 +27,31 @@ public class QuizActivity extends AppCompatActivity {
 
     private ProgressBar progressBar;
     private TextView tvQuestionContent;
-    private LinearLayout layoutOptions, layoutDictation;
-    private Button btnOptionA, btnOptionB, btnOptionC, btnOptionD, btnSubmitDict;
+    private LinearLayout layoutOptions;
+    private LinearLayout layoutDictation;
+
+    private Button btnOptionA;
+    private Button btnOptionB;
+    private Button btnOptionC;
+    private Button btnOptionD;
+    private Button btnSubmitDict;
+
     private EditText etDictInput;
 
     private DatabaseHelper dbHelper;
     private UserSessionManager sessionManager;
-    private int currentUserId;
 
+    private int currentUserId;
     private final List<Question> questionList = new ArrayList<>();
     private int currentQuizIndex = 0;
     private int score = 0;
+
     private boolean testRecordSaved = false;
+    private boolean resultDialogShown = false;
 
     private static class Question {
         String answerWord;
-        String questionClue; // 中文释义
+        String questionClue;
         List<String> options = new ArrayList<>();
     }
 
@@ -56,6 +67,7 @@ public class QuizActivity extends AppCompatActivity {
             Intent intent = new Intent(QuizActivity.this, LoginActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
+            finish();
             return;
         }
 
@@ -81,6 +93,12 @@ public class QuizActivity extends AppCompatActivity {
         etDictInput = findViewById(R.id.etDictInput);
         btnSubmitDict = findViewById(R.id.btnSubmitDict);
 
+        disableButtonAllCaps(btnOptionA);
+        disableButtonAllCaps(btnOptionB);
+        disableButtonAllCaps(btnOptionC);
+        disableButtonAllCaps(btnOptionD);
+        disableButtonAllCaps(btnSubmitDict);
+
         View.OnClickListener optionClickListener = v -> {
             Button btn = (Button) v;
             checkChoiceAnswer(btn.getText().toString());
@@ -91,9 +109,27 @@ public class QuizActivity extends AppCompatActivity {
         btnOptionC.setOnClickListener(optionClickListener);
         btnOptionD.setOnClickListener(optionClickListener);
 
-        findViewById(R.id.btnSpeak).setOnClickListener(v -> playOnlineVoice());
+        View btnSpeak = findViewById(R.id.btnSpeak);
+        if (btnSpeak != null) {
+            btnSpeak.setOnClickListener(v -> playOnlineVoice());
+        }
 
-        btnSubmitDict.setOnClickListener(v -> checkDictAnswer());
+        if (btnSubmitDict != null) {
+            btnSubmitDict.setOnClickListener(v -> checkDictAnswer());
+        }
+    }
+
+    private void disableButtonAllCaps(Button button) {
+        if (button == null) {
+            return;
+        }
+
+        button.setAllCaps(false);
+
+        TransformationMethod method = button.getTransformationMethod();
+        if (method != null) {
+            button.setTransformationMethod(null);
+        }
     }
 
     private void generateQuizSheet() {
@@ -101,11 +137,6 @@ public class QuizActivity extends AppCompatActivity {
 
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
-        /*
-         * 1. 优先从当前用户已经学过的单词里抽题。
-         * 重点：必须加 s.user_id = ?
-         * 否则 A 用户会抽到 B 用户学过的单词。
-         */
         Cursor cursor = db.rawQuery(
                 "SELECT e.word, e.translation " +
                         "FROM study_record s " +
@@ -117,13 +148,8 @@ public class QuizActivity extends AppCompatActivity {
                 new String[]{String.valueOf(currentUserId)}
         );
 
-        /*
-         * 2. 如果当前用户已学单词不足 10 个，
-         * 为了保证测试页面能运行，就从公共词库随机抽 10 个。
-         */
         if (cursor.getCount() < 10) {
             cursor.close();
-
             cursor = db.rawQuery(
                     "SELECT word, translation FROM ecdict ORDER BY RANDOM() LIMIT 10",
                     null
@@ -132,8 +158,13 @@ public class QuizActivity extends AppCompatActivity {
 
         while (cursor.moveToNext()) {
             Question q = new Question();
-            q.answerWord = cursor.getString(0);
+
+            q.answerWord = safeWord(cursor.getString(0));
             q.questionClue = cursor.getString(1);
+
+            if (q.answerWord.isEmpty()) {
+                continue;
+            }
 
             if (q.questionClue == null || q.questionClue.trim().isEmpty()) {
                 q.questionClue = "暂无释义";
@@ -141,7 +172,6 @@ public class QuizActivity extends AppCompatActivity {
 
             q.options.add(q.answerWord);
 
-            // 生成 3 个英文干扰项
             Cursor fakeCursor = db.rawQuery(
                     "SELECT word FROM ecdict " +
                             "WHERE word != ? " +
@@ -150,12 +180,14 @@ public class QuizActivity extends AppCompatActivity {
             );
 
             while (fakeCursor.moveToNext()) {
-                q.options.add(fakeCursor.getString(0));
+                String fakeWord = safeWord(fakeCursor.getString(0));
+                if (!fakeWord.isEmpty() && !q.options.contains(fakeWord)) {
+                    q.options.add(fakeWord);
+                }
             }
 
             fakeCursor.close();
 
-            // 防止极端情况下干扰项不足 3 个导致按钮越界
             if (q.options.size() == 4) {
                 Collections.shuffle(q.options);
                 questionList.add(q);
@@ -169,6 +201,13 @@ public class QuizActivity extends AppCompatActivity {
         }
     }
 
+    private String safeWord(String word) {
+        if (word == null) {
+            return "";
+        }
+        return word.trim();
+    }
+
     private void showQuestion() {
         if (questionList.isEmpty()) {
             Toast.makeText(this, "暂无可用测试题目", Toast.LENGTH_LONG).show();
@@ -178,14 +217,7 @@ public class QuizActivity extends AppCompatActivity {
 
         if (currentQuizIndex >= questionList.size()) {
             saveTestRecord();
-
-            Toast.makeText(
-                    this,
-                    "测试结束，您的得分是: " + score + " / " + questionList.size(),
-                    Toast.LENGTH_LONG
-            ).show();
-
-            finish();
+            showResultDialog();
             return;
         }
 
@@ -195,10 +227,6 @@ public class QuizActivity extends AppCompatActivity {
 
         tvQuestionContent.setText(q.questionClue);
 
-        /*
-         * 当前默认模式：看中文选英文。
-         * 听写模式和看英选中模式后面可以继续扩展。
-         */
         layoutOptions.setVisibility(View.VISIBLE);
         layoutDictation.setVisibility(View.GONE);
 
@@ -215,11 +243,15 @@ public class QuizActivity extends AppCompatActivity {
 
         Question q = questionList.get(currentQuizIndex);
 
-        if (q.answerWord.equals(selectedOption)) {
+        if (q.answerWord.equalsIgnoreCase(selectedOption.trim())) {
             score++;
             Toast.makeText(this, "回答正确！", Toast.LENGTH_SHORT).show();
         } else {
-            Toast.makeText(this, "回答错误，正确答案是: " + q.answerWord, Toast.LENGTH_SHORT).show();
+            Toast.makeText(
+                    this,
+                    "回答错误，正确答案是：" + q.answerWord,
+                    Toast.LENGTH_SHORT
+            ).show();
         }
 
         currentQuizIndex++;
@@ -243,13 +275,46 @@ public class QuizActivity extends AppCompatActivity {
             score++;
             Toast.makeText(this, "拼写正确！", Toast.LENGTH_SHORT).show();
         } else {
-            Toast.makeText(this, "拼写错误，正确写法是: " + q.answerWord, Toast.LENGTH_SHORT).show();
+            Toast.makeText(
+                    this,
+                    "拼写错误，正确写法是：" + q.answerWord,
+                    Toast.LENGTH_SHORT
+            ).show();
         }
 
         etDictInput.setText("");
-
         currentQuizIndex++;
         showQuestion();
+    }
+
+    private void showResultDialog() {
+        if (resultDialogShown) {
+            return;
+        }
+
+        resultDialogShown = true;
+
+        int total = questionList.size();
+        int wrong = total - score;
+        int percent = total == 0 ? 0 : Math.round(score * 100f / total);
+
+        String message =
+                "总题数：" + total + " 题\n" +
+                        "答对：" + score + " 题\n" +
+                        "答错：" + wrong + " 题\n" +
+                        "正确率：" + percent + "%";
+
+        new AlertDialog.Builder(this)
+                .setTitle("本次测试成绩")
+                .setMessage(message)
+                .setCancelable(false)
+                .setPositiveButton("返回主页", (dialog, which) -> {
+                    Intent intent = new Intent(QuizActivity.this, MainActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    startActivity(intent);
+                    finish();
+                })
+                .show();
     }
 
     private void playOnlineVoice() {
@@ -258,7 +323,6 @@ public class QuizActivity extends AppCompatActivity {
         }
 
         Question q = questionList.get(currentQuizIndex);
-
         String url = "https://dict.youdao.com/dictvoice?type=1&audio=" + q.answerWord;
 
         MediaPlayer mediaPlayer = new MediaPlayer();
@@ -266,8 +330,16 @@ public class QuizActivity extends AppCompatActivity {
         try {
             mediaPlayer.setDataSource(url);
             mediaPlayer.prepareAsync();
+
             mediaPlayer.setOnPreparedListener(MediaPlayer::start);
             mediaPlayer.setOnCompletionListener(MediaPlayer::release);
+
+            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+                Toast.makeText(this, "发音播放失败，请检查网络", Toast.LENGTH_SHORT).show();
+                mp.release();
+                return true;
+            });
+
         } catch (IOException e) {
             Toast.makeText(this, "发音加载失败，请检查网络", Toast.LENGTH_SHORT).show();
             mediaPlayer.release();
