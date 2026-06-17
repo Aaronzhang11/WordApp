@@ -71,9 +71,10 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        findViewById(R.id.btnWordBook).setOnClickListener(v ->
-                Toast.makeText(this, "单词本功能正在加载...", Toast.LENGTH_SHORT).show()
-        );
+        findViewById(R.id.btnWordBook).setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, WordBookActivity.class);
+            startActivity(intent);
+        });
     }
 
     @Override

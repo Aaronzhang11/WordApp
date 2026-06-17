@@ -76,7 +76,6 @@ public class StudyActivity extends AppCompatActivity {
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
 
-        // 点击单词卡片后翻转，显示中文释义和操作按钮
         findViewById(R.id.wordCardView).setOnClickListener(v -> flipCard());
 
         findViewById(R.id.btnRemembered).setOnClickListener(v -> processAnswer(true));
@@ -92,7 +91,6 @@ public class StudyActivity extends AppCompatActivity {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         long now = System.currentTimeMillis();
 
-        // 1. 优先加载当前用户已经到复习时间的单词
         Cursor cursor = db.rawQuery(
                 "SELECT e.word, e.phonetic, e.translation, s.master_level " +
                         "FROM study_record s " +
@@ -117,8 +115,6 @@ public class StudyActivity extends AppCompatActivity {
         }
 
         cursor.close();
-
-
     }
 
     private void showCurrentWord() {
@@ -150,11 +146,12 @@ public class StudyActivity extends AppCompatActivity {
             tvTranslation.setText(item.translation);
         }
 
-        // 每次展示新单词时，重置为正面
         cardFront.setVisibility(View.VISIBLE);
         cardBack.setVisibility(View.GONE);
         controlPanel.setVisibility(View.INVISIBLE);
         isBackVisible = false;
+
+        updateFavoriteIcon(item.word);
     }
 
     private void flipCard() {
@@ -181,24 +178,23 @@ public class StudyActivity extends AppCompatActivity {
         if (knew) {
             nextLevel = Math.min(3, item.level + 1);
 
-            // 简化版艾宾浩斯复习间隔
             switch (nextLevel) {
                 case 1:
-                    interval = 5 * 60 * 1000L;          // 5分钟
+                    interval = 5 * 60 * 1000L;
                     break;
                 case 2:
-                    interval = 24 * 60 * 60 * 1000L;    // 1天
+                    interval = 24 * 60 * 60 * 1000L;
                     break;
                 case 3:
-                    interval = 7 * 24 * 60 * 60 * 1000L; // 7天
+                    interval = 7 * 24 * 60 * 60 * 1000L;
                     break;
                 default:
-                    interval = 14 * 24 * 60 * 60 * 1000L; // 14天
+                    interval = 14 * 24 * 60 * 60 * 1000L;
                     break;
             }
         } else {
             nextLevel = 0;
-            interval = 60 * 1000L; // 1分钟后重新复习
+            interval = 60 * 1000L;
         }
 
         long nextReviewTime = System.currentTimeMillis() + interval;
@@ -218,11 +214,24 @@ public class StudyActivity extends AppCompatActivity {
             values.put("error_count", 1);
         }
 
-        /*
-         * DatabaseHelper 里 study_record 已经设置 UNIQUE(user_id, word)，
-         * 所以这里 replace 时不会影响其他用户同一个单词的记录。
-         */
-        db.replace("study_record", null, values);
+        int rows = db.update(
+                "study_record",
+                values,
+                "user_id = ? AND word = ?",
+                new String[]{
+                        String.valueOf(currentUserId),
+                        item.word
+                }
+        );
+
+        if (rows == 0) {
+            db.insertWithOnConflict(
+                    "study_record",
+                    null,
+                    values,
+                    SQLiteDatabase.CONFLICT_IGNORE
+            );
+        }
 
         currentIndex++;
         showCurrentWord();
@@ -254,10 +263,6 @@ public class StudyActivity extends AppCompatActivity {
                             }
                     );
 
-                    /*
-                     * 如果这个词是随机新词，还没写入 study_record，
-                     * update 会影响 0 行，所以这里手动插入一条当前用户的忽略记录。
-                     */
                     if (rows == 0) {
                         values.put("user_id", currentUserId);
                         values.put("word", item.word);
@@ -265,7 +270,12 @@ public class StudyActivity extends AppCompatActivity {
                         values.put("next_review_time", 0);
                         values.put("error_count", 0);
 
-                        db.insert("study_record", null, values);
+                        db.insertWithOnConflict(
+                                "study_record",
+                                null,
+                                values,
+                                SQLiteDatabase.CONFLICT_IGNORE
+                        );
                     }
 
                     Toast.makeText(StudyActivity.this, "已从当前用户队列中移除", Toast.LENGTH_SHORT).show();
@@ -284,12 +294,157 @@ public class StudyActivity extends AppCompatActivity {
 
         WordItem item = studyQueue.get(currentIndex);
 
-        /*
-         * 这里目前只是临时提示。
-         * 真正的收藏功能后面要写入 word_book 和 book_word_relation，
-         * 并且也要绑定 currentUserId。
-         */
-        Toast.makeText(this, "\"" + item.word + "\" 收藏功能后续接入单词本", Toast.LENGTH_SHORT).show();
-        btnFavorite.setImageResource(android.R.drawable.btn_star_big_on);
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+
+        List<Integer> bookIds = new ArrayList<>();
+        List<String> bookNames = new ArrayList<>();
+
+        Cursor cursor = db.rawQuery(
+                "SELECT book_id, book_name FROM word_book " +
+                        "WHERE user_id = ? " +
+                        "ORDER BY create_time DESC",
+                new String[]{String.valueOf(currentUserId)}
+        );
+
+        while (cursor.moveToNext()) {
+            bookIds.add(cursor.getInt(0));
+            bookNames.add(cursor.getString(1));
+        }
+
+        cursor.close();
+
+        if (bookIds.isEmpty()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("还没有单词本")
+                    .setMessage("当前账号还没有创建单词本，是否自动创建一个“默认单词本”并收藏该单词？")
+                    .setPositiveButton("创建并收藏", (dialog, which) -> {
+                        SQLiteDatabase writeDb = dbHelper.getWritableDatabase();
+                        int defaultBookId = createDefaultBook(writeDb);
+
+                        if (defaultBookId != -1) {
+                            addWordToBook(writeDb, defaultBookId, item.word);
+                        } else {
+                            Toast.makeText(this, "默认单词本创建失败", Toast.LENGTH_SHORT).show();
+                        }
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+
+            return;
+        }
+
+        String[] bookNameArray = bookNames.toArray(new String[0]);
+
+        new AlertDialog.Builder(this)
+                .setTitle("选择要收藏到的单词本")
+                .setItems(bookNameArray, (dialog, which) -> {
+                    SQLiteDatabase writeDb = dbHelper.getWritableDatabase();
+                    int selectedBookId = bookIds.get(which);
+                    addWordToBook(writeDb, selectedBookId, item.word);
+                })
+                .show();
+    }
+
+    private int createDefaultBook(SQLiteDatabase db) {
+        ContentValues values = new ContentValues();
+        values.put("user_id", currentUserId);
+        values.put("book_name", "默认单词本");
+        values.put("create_time", System.currentTimeMillis());
+
+        long result = db.insertWithOnConflict(
+                "word_book",
+                null,
+                values,
+                SQLiteDatabase.CONFLICT_IGNORE
+        );
+
+        if (result != -1) {
+            return (int) result;
+        }
+
+        Cursor cursor = db.rawQuery(
+                "SELECT book_id FROM word_book WHERE user_id = ? AND book_name = ?",
+                new String[]{
+                        String.valueOf(currentUserId),
+                        "默认单词本"
+                }
+        );
+
+        int bookId = -1;
+
+        if (cursor.moveToFirst()) {
+            bookId = cursor.getInt(0);
+        }
+
+        cursor.close();
+
+        return bookId;
+    }
+
+    private void addWordToBook(SQLiteDatabase db, int bookId, String word) {
+        if (isWordAlreadyInBook(db, bookId, word)) {
+            Toast.makeText(this, "该单词已在此单词本中", Toast.LENGTH_SHORT).show();
+            btnFavorite.setImageResource(android.R.drawable.btn_star_big_on);
+            return;
+        }
+
+        ContentValues values = new ContentValues();
+        values.put("book_id", bookId);
+        values.put("word", word);
+        values.put("add_time", System.currentTimeMillis());
+
+        long result = db.insertWithOnConflict(
+                "book_word_relation",
+                null,
+                values,
+                SQLiteDatabase.CONFLICT_IGNORE
+        );
+
+        if (result == -1) {
+            Toast.makeText(this, "收藏失败，请重试", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, "收藏成功", Toast.LENGTH_SHORT).show();
+            btnFavorite.setImageResource(android.R.drawable.btn_star_big_on);
+        }
+    }
+
+    private boolean isWordAlreadyInBook(SQLiteDatabase db, int bookId, String word) {
+        Cursor cursor = db.rawQuery(
+                "SELECT relation_id FROM book_word_relation WHERE book_id = ? AND word = ?",
+                new String[]{
+                        String.valueOf(bookId),
+                        word
+                }
+        );
+
+        boolean exists = cursor.moveToFirst();
+        cursor.close();
+
+        return exists;
+    }
+
+    private void updateFavoriteIcon(String word) {
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+
+        Cursor cursor = db.rawQuery(
+                "SELECT r.relation_id " +
+                        "FROM book_word_relation r " +
+                        "JOIN word_book b ON r.book_id = b.book_id " +
+                        "WHERE b.user_id = ? AND r.word = ? " +
+                        "LIMIT 1",
+                new String[]{
+                        String.valueOf(currentUserId),
+                        word
+                }
+        );
+
+        boolean isFavorite = cursor.moveToFirst();
+        cursor.close();
+
+        if (isFavorite) {
+            btnFavorite.setImageResource(android.R.drawable.btn_star_big_on);
+        } else {
+            btnFavorite.setImageResource(android.R.drawable.btn_star_big_off);
+        }
     }
 }
