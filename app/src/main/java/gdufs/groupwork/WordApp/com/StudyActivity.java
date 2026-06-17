@@ -293,8 +293,37 @@ public class StudyActivity extends AppCompatActivity {
         }
 
         WordItem item = studyQueue.get(currentIndex);
-
         SQLiteDatabase db = dbHelper.getWritableDatabase();
+
+        if (isCurrentUserFavorite(db, item.word)) {
+            new AlertDialog.Builder(this)
+                    .setTitle("取消收藏")
+                    .setMessage("确定要取消收藏单词 \"" + item.word + "\" 吗？\n\n该操作会从当前用户所有单词本中移除此单词。")
+                    .setPositiveButton("确定", (dialog, which) -> {
+                        int rows = db.delete(
+                                "book_word_relation",
+                                "word = ? AND book_id IN (" +
+                                        "SELECT book_id FROM word_book WHERE user_id = ?" +
+                                        ")",
+                                new String[]{
+                                        item.word,
+                                        String.valueOf(currentUserId)
+                                }
+                        );
+
+                        if (rows > 0) {
+                            Toast.makeText(this, "已取消收藏", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(this, "当前单词未收藏", Toast.LENGTH_SHORT).show();
+                        }
+
+                        btnFavorite.setImageResource(android.R.drawable.btn_star_big_off);
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+
+            return;
+        }
 
         List<Integer> bookIds = new ArrayList<>();
         List<String> bookNames = new ArrayList<>();
@@ -318,11 +347,10 @@ public class StudyActivity extends AppCompatActivity {
                     .setTitle("还没有单词本")
                     .setMessage("当前账号还没有创建单词本，是否自动创建一个“默认单词本”并收藏该单词？")
                     .setPositiveButton("创建并收藏", (dialog, which) -> {
-                        SQLiteDatabase writeDb = dbHelper.getWritableDatabase();
-                        int defaultBookId = createDefaultBook(writeDb);
+                        int defaultBookId = createDefaultBook(db);
 
                         if (defaultBookId != -1) {
-                            addWordToBook(writeDb, defaultBookId, item.word);
+                            addWordToBook(db, defaultBookId, item.word);
                         } else {
                             Toast.makeText(this, "默认单词本创建失败", Toast.LENGTH_SHORT).show();
                         }
@@ -338,11 +366,29 @@ public class StudyActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("选择要收藏到的单词本")
                 .setItems(bookNameArray, (dialog, which) -> {
-                    SQLiteDatabase writeDb = dbHelper.getWritableDatabase();
                     int selectedBookId = bookIds.get(which);
-                    addWordToBook(writeDb, selectedBookId, item.word);
+                    addWordToBook(db, selectedBookId, item.word);
                 })
                 .show();
+    }
+
+    private boolean isCurrentUserFavorite(SQLiteDatabase db, String word) {
+        Cursor cursor = db.rawQuery(
+                "SELECT r.relation_id " +
+                        "FROM book_word_relation r " +
+                        "JOIN word_book b ON r.book_id = b.book_id " +
+                        "WHERE b.user_id = ? AND r.word = ? " +
+                        "LIMIT 1",
+                new String[]{
+                        String.valueOf(currentUserId),
+                        word
+                }
+        );
+
+        boolean exists = cursor.moveToFirst();
+        cursor.close();
+
+        return exists;
     }
 
     private int createDefaultBook(SQLiteDatabase db) {
@@ -382,12 +428,6 @@ public class StudyActivity extends AppCompatActivity {
     }
 
     private void addWordToBook(SQLiteDatabase db, int bookId, String word) {
-        if (isWordAlreadyInBook(db, bookId, word)) {
-            Toast.makeText(this, "该单词已在此单词本中", Toast.LENGTH_SHORT).show();
-            btnFavorite.setImageResource(android.R.drawable.btn_star_big_on);
-            return;
-        }
-
         ContentValues values = new ContentValues();
         values.put("book_id", bookId);
         values.put("word", word);
@@ -401,47 +441,18 @@ public class StudyActivity extends AppCompatActivity {
         );
 
         if (result == -1) {
-            Toast.makeText(this, "收藏失败，请重试", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "该单词已在此单词本中", Toast.LENGTH_SHORT).show();
         } else {
             Toast.makeText(this, "收藏成功", Toast.LENGTH_SHORT).show();
-            btnFavorite.setImageResource(android.R.drawable.btn_star_big_on);
         }
-    }
 
-    private boolean isWordAlreadyInBook(SQLiteDatabase db, int bookId, String word) {
-        Cursor cursor = db.rawQuery(
-                "SELECT relation_id FROM book_word_relation WHERE book_id = ? AND word = ?",
-                new String[]{
-                        String.valueOf(bookId),
-                        word
-                }
-        );
-
-        boolean exists = cursor.moveToFirst();
-        cursor.close();
-
-        return exists;
+        btnFavorite.setImageResource(android.R.drawable.btn_star_big_on);
     }
 
     private void updateFavoriteIcon(String word) {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
-        Cursor cursor = db.rawQuery(
-                "SELECT r.relation_id " +
-                        "FROM book_word_relation r " +
-                        "JOIN word_book b ON r.book_id = b.book_id " +
-                        "WHERE b.user_id = ? AND r.word = ? " +
-                        "LIMIT 1",
-                new String[]{
-                        String.valueOf(currentUserId),
-                        word
-                }
-        );
-
-        boolean isFavorite = cursor.moveToFirst();
-        cursor.close();
-
-        if (isFavorite) {
+        if (isCurrentUserFavorite(db, word)) {
             btnFavorite.setImageResource(android.R.drawable.btn_star_big_on);
         } else {
             btnFavorite.setImageResource(android.R.drawable.btn_star_big_off);

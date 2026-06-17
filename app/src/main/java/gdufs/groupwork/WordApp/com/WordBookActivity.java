@@ -29,8 +29,16 @@ public class WordBookActivity extends AppCompatActivity {
 
     private final List<String> displayList = new ArrayList<>();
     private final List<Integer> bookIdList = new ArrayList<>();
+    private final List<String> bookNameList = new ArrayList<>();
 
     private ArrayAdapter<String> adapter;
+
+    private static class BookWordItem {
+        int relationId;
+        String word;
+        String phonetic;
+        String translation;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,7 +76,24 @@ public class WordBookActivity extends AppCompatActivity {
 
         lvWordBooks.setOnItemClickListener((parent, view, position, id) -> {
             int bookId = bookIdList.get(position);
-            showBookWords(bookId);
+
+            if (bookId == -1) {
+                Toast.makeText(this, "请先创建单词本", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            showBookWords(bookId, bookNameList.get(position));
+        });
+
+        lvWordBooks.setOnItemLongClickListener((parent, view, position, id) -> {
+            int bookId = bookIdList.get(position);
+
+            if (bookId == -1) {
+                return true;
+            }
+
+            confirmDeleteBook(bookId, bookNameList.get(position));
+            return true;
         });
     }
 
@@ -106,6 +131,7 @@ public class WordBookActivity extends AppCompatActivity {
     private void loadWordBooks() {
         displayList.clear();
         bookIdList.clear();
+        bookNameList.clear();
 
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
@@ -125,7 +151,8 @@ public class WordBookActivity extends AppCompatActivity {
             int wordCount = cursor.getInt(2);
 
             bookIdList.add(bookId);
-            displayList.add(bookName + "\n共 " + wordCount + " 个单词");
+            bookNameList.add(bookName);
+            displayList.add(bookName + "\n共 " + wordCount + " 个单词\n长按可删除单词本");
         }
 
         cursor.close();
@@ -133,64 +160,157 @@ public class WordBookActivity extends AppCompatActivity {
         if (displayList.isEmpty()) {
             displayList.add("暂无单词本，请先创建一个");
             bookIdList.add(-1);
+            bookNameList.add("");
         }
 
         adapter.notifyDataSetChanged();
     }
 
-    private void showBookWords(int bookId) {
-        if (bookId == -1) {
-            Toast.makeText(this, "请先创建单词本", Toast.LENGTH_SHORT).show();
+    private void confirmDeleteBook(int bookId, String bookName) {
+        new AlertDialog.Builder(this)
+                .setTitle("删除单词本")
+                .setMessage("确定要删除单词本 \"" + bookName + "\" 吗？\n\n删除后，该单词本内收藏的单词记录也会被删除，但不会影响学习记录。")
+                .setPositiveButton("删除", (dialog, which) -> deleteBook(bookId))
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void deleteBook(int bookId) {
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+
+        db.beginTransaction();
+
+        try {
+            db.delete(
+                    "book_word_relation",
+                    "book_id = ?",
+                    new String[]{String.valueOf(bookId)}
+            );
+
+            db.delete(
+                    "word_book",
+                    "book_id = ? AND user_id = ?",
+                    new String[]{
+                            String.valueOf(bookId),
+                            String.valueOf(currentUserId)
+                    }
+            );
+
+            db.setTransactionSuccessful();
+
+            Toast.makeText(this, "单词本已删除", Toast.LENGTH_SHORT).show();
+        } finally {
+            db.endTransaction();
+        }
+
+        loadWordBooks();
+    }
+
+    private void showBookWords(int bookId, String bookName) {
+        List<BookWordItem> wordItems = loadBookWordItems(bookId);
+
+        if (wordItems.isEmpty()) {
+            new AlertDialog.Builder(this)
+                    .setTitle(bookName)
+                    .setMessage("这个单词本里还没有收藏单词")
+                    .setPositiveButton("确定", null)
+                    .show();
             return;
         }
+
+        String[] wordArray = new String[wordItems.size()];
+
+        for (int i = 0; i < wordItems.size(); i++) {
+            BookWordItem item = wordItems.get(i);
+
+            StringBuilder builder = new StringBuilder();
+            builder.append(item.word);
+
+            if (item.phonetic != null && !item.phonetic.trim().isEmpty()) {
+                builder.append("  [").append(item.phonetic).append("]");
+            }
+
+            builder.append("\n");
+
+            if (item.translation != null && !item.translation.trim().isEmpty()) {
+                builder.append(item.translation);
+            } else {
+                builder.append("暂无释义");
+            }
+
+            wordArray[i] = builder.toString();
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(bookName + " - 点击单词可删除")
+                .setItems(wordArray, (dialog, which) -> {
+                    BookWordItem selectedItem = wordItems.get(which);
+                    confirmDeleteWord(bookId, bookName, selectedItem);
+                })
+                .setPositiveButton("关闭", null)
+                .show();
+    }
+
+    private List<BookWordItem> loadBookWordItems(int bookId) {
+        List<BookWordItem> wordItems = new ArrayList<>();
 
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
         Cursor cursor = db.rawQuery(
-                "SELECT e.word, e.phonetic, e.translation " +
+                "SELECT r.relation_id, e.word, e.phonetic, e.translation " +
                         "FROM book_word_relation r " +
                         "JOIN ecdict e ON r.word = e.word " +
-                        "WHERE r.book_id = ? " +
+                        "JOIN word_book b ON r.book_id = b.book_id " +
+                        "WHERE r.book_id = ? AND b.user_id = ? " +
                         "ORDER BY r.add_time DESC",
-                new String[]{String.valueOf(bookId)}
+                new String[]{
+                        String.valueOf(bookId),
+                        String.valueOf(currentUserId)
+                }
         );
 
-        StringBuilder builder = new StringBuilder();
-
         while (cursor.moveToNext()) {
-            String word = cursor.getString(0);
-            String phonetic = cursor.getString(1);
-            String translation = cursor.getString(2);
+            BookWordItem item = new BookWordItem();
+            item.relationId = cursor.getInt(0);
+            item.word = cursor.getString(1);
+            item.phonetic = cursor.getString(2);
+            item.translation = cursor.getString(3);
 
-            builder.append(word);
-
-            if (phonetic != null && !phonetic.trim().isEmpty()) {
-                builder.append("  [").append(phonetic).append("]");
-            }
-
-            builder.append("\n");
-
-            if (translation != null && !translation.trim().isEmpty()) {
-                builder.append(translation).append("\n");
-            } else {
-                builder.append("暂无释义\n");
-            }
-
-            builder.append("\n");
+            wordItems.add(item);
         }
 
         cursor.close();
 
-        String message = builder.toString().trim();
+        return wordItems;
+    }
 
-        if (message.isEmpty()) {
-            message = "这个单词本里还没有收藏单词";
+    private void confirmDeleteWord(int bookId, String bookName, BookWordItem item) {
+        new AlertDialog.Builder(this)
+                .setTitle("删除收藏单词")
+                .setMessage("确定要从单词本中删除 \"" + item.word + "\" 吗？")
+                .setPositiveButton("删除", (dialog, which) -> {
+                    deleteWordFromBook(item.relationId);
+                    showBookWords(bookId, bookName);
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void deleteWordFromBook(int relationId) {
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+
+        int rows = db.delete(
+                "book_word_relation",
+                "relation_id = ?",
+                new String[]{String.valueOf(relationId)}
+        );
+
+        if (rows > 0) {
+            Toast.makeText(this, "已从单词本删除", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, "删除失败", Toast.LENGTH_SHORT).show();
         }
 
-        new AlertDialog.Builder(this)
-                .setTitle("单词本内容")
-                .setMessage(message)
-                .setPositiveButton("确定", null)
-                .show();
+        loadWordBooks();
     }
 }

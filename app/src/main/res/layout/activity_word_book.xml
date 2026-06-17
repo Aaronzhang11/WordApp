@@ -20,7 +20,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="创建单词本后，可以在背单词页面点击收藏，将单词加入指定单词本"
+        android:text="点击单词本查看内容，长按单词本可删除；查看内容时点击单词可从单词本删除"
         android:textSize="14sp"
         android:textColor="#666666"
         android:gravity="center"
