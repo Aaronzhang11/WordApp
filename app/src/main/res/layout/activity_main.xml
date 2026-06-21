@@ -178,6 +178,17 @@
         app:icon="@android:drawable/ic_menu_search"/>
 
     <Button
+        android:id="@+id/btnDashboard"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginBottom="12dp"
+        android:text="学习数据看板"
+        android:textSize="16sp"
+        android:textColor="@android:color/white"
+        android:backgroundTint="@color/colorPrimary"
+        app:icon="@android:drawable/ic_menu_view" />
+
+    <Button
         android:id="@+id/btnWordBook"
         android:layout_width="match_parent"
         android:layout_height="56dp"

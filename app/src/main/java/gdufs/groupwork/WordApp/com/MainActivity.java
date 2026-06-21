@@ -71,6 +71,11 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
+        findViewById(R.id.btnDashboard).setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, DashboardActivity.class);
+            startActivity(intent);
+        });
+
         findViewById(R.id.btnWordBook).setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, WordBookActivity.class);
             startActivity(intent);
