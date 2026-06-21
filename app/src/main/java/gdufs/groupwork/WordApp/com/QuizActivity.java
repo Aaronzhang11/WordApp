@@ -4,12 +4,11 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.text.method.TransformationMethod;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -18,31 +17,36 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class QuizActivity extends AppCompatActivity {
 
+    public static final String EXTRA_QUIZ_MODE = "quiz_mode";
+
+    public static final String MODE_CHINESE_TO_ENGLISH = "CHINESE_TO_ENGLISH";
+    public static final String MODE_ENGLISH_TO_CHINESE = "ENGLISH_TO_CHINESE";
+
+    private static final int QUIZ_QUESTION_COUNT = 10;
+
     private ProgressBar progressBar;
+    private TextView tvQuestionTitle;
     private TextView tvQuestionContent;
     private LinearLayout layoutOptions;
-    private LinearLayout layoutDictation;
 
     private Button btnOptionA;
     private Button btnOptionB;
     private Button btnOptionC;
     private Button btnOptionD;
-    private Button btnSubmitDict;
     private Button btnExitQuiz;
-
-    private EditText etDictInput;
 
     private DatabaseHelper dbHelper;
     private UserSessionManager sessionManager;
 
     private int currentUserId;
+    private String quizMode;
+
     private final List<Question> questionList = new ArrayList<>();
 
     private int currentQuizIndex = 0;
@@ -55,6 +59,7 @@ public class QuizActivity extends AppCompatActivity {
     private static class Question {
         String answerWord;
         String questionClue;
+        String correctOption;
         List<String> options = new ArrayList<>();
     }
 
@@ -76,32 +81,37 @@ public class QuizActivity extends AppCompatActivity {
 
         currentUserId = sessionManager.getCurrentUserId();
 
+        quizMode = getIntent().getStringExtra(EXTRA_QUIZ_MODE);
+
+        if (!MODE_ENGLISH_TO_CHINESE.equals(quizMode)) {
+            quizMode = MODE_CHINESE_TO_ENGLISH;
+        }
+
         initViews();
-        generateQuizSheet();
+
+        if (!generateQuizSheet()) {
+            return;
+        }
+
         showQuestion();
     }
 
     private void initViews() {
         progressBar = findViewById(R.id.progressBar);
+        tvQuestionTitle = findViewById(R.id.tvQuestionTitle);
         tvQuestionContent = findViewById(R.id.tvQuestionContent);
-
         layoutOptions = findViewById(R.id.layoutOptions);
-        layoutDictation = findViewById(R.id.layoutDictation);
 
         btnOptionA = findViewById(R.id.btnOptionA);
         btnOptionB = findViewById(R.id.btnOptionB);
         btnOptionC = findViewById(R.id.btnOptionC);
         btnOptionD = findViewById(R.id.btnOptionD);
-
-        etDictInput = findViewById(R.id.etDictInput);
-        btnSubmitDict = findViewById(R.id.btnSubmitDict);
         btnExitQuiz = findViewById(R.id.btnExitQuiz);
 
         disableButtonAllCaps(btnOptionA);
         disableButtonAllCaps(btnOptionB);
         disableButtonAllCaps(btnOptionC);
         disableButtonAllCaps(btnOptionD);
-        disableButtonAllCaps(btnSubmitDict);
         disableButtonAllCaps(btnExitQuiz);
 
         View.OnClickListener optionClickListener = v -> {
@@ -115,15 +125,6 @@ public class QuizActivity extends AppCompatActivity {
         btnOptionD.setOnClickListener(optionClickListener);
 
         btnExitQuiz.setOnClickListener(v -> showExitConfirmDialog());
-
-        View btnSpeak = findViewById(R.id.btnSpeak);
-        if (btnSpeak != null) {
-            btnSpeak.setOnClickListener(v -> playOnlineVoice());
-        }
-
-        if (btnSubmitDict != null) {
-            btnSubmitDict.setOnClickListener(v -> checkDictAnswer());
-        }
     }
 
     private void disableButtonAllCaps(Button button) {
@@ -134,12 +135,13 @@ public class QuizActivity extends AppCompatActivity {
         button.setAllCaps(false);
 
         TransformationMethod method = button.getTransformationMethod();
+
         if (method != null) {
             button.setTransformationMethod(null);
         }
     }
 
-    private void generateQuizSheet() {
+    private boolean generateQuizSheet() {
         questionList.clear();
 
         SQLiteDatabase db = dbHelper.getReadableDatabase();
@@ -151,48 +153,46 @@ public class QuizActivity extends AppCompatActivity {
                         "WHERE s.user_id = ? " +
                         "AND s.master_level > 0 " +
                         "AND s.is_ignored = 0 " +
-                        "ORDER BY RANDOM() LIMIT 10",
+                        "ORDER BY RANDOM() " +
+                        "LIMIT " + QUIZ_QUESTION_COUNT,
                 new String[]{String.valueOf(currentUserId)}
         );
 
-        // 当前用户的学习记录不足 10 个时，从整个词库随机取题
-        if (cursor.getCount() < 10) {
+        if (cursor.getCount() < QUIZ_QUESTION_COUNT) {
             cursor.close();
 
-            cursor = db.rawQuery(
-                    "SELECT word, translation FROM ecdict ORDER BY RANDOM() LIMIT 10",
-                    null
-            );
+            Toast.makeText(
+                    this,
+                    "已学习单词不足 10 个，请先去背诵单词",
+                    Toast.LENGTH_LONG
+            ).show();
+
+            finish();
+            return false;
         }
 
         while (cursor.moveToNext()) {
-            Question question = new Question();
+            String word = safeText(cursor.getString(0));
+            String translation = safeText(cursor.getString(1));
 
-            question.answerWord = safeWord(cursor.getString(0));
-            question.questionClue = formatQuestionClue(cursor.getString(1));
-
-            if (question.answerWord.isEmpty()) {
+            if (word.isEmpty() || translation.isEmpty()) {
                 continue;
             }
 
-            question.options.add(question.answerWord);
+            Question question = new Question();
+            question.answerWord = word;
 
-            Cursor fakeCursor = db.rawQuery(
-                    "SELECT word FROM ecdict " +
-                            "WHERE word != ? " +
-                            "ORDER BY RANDOM() LIMIT 3",
-                    new String[]{question.answerWord}
-            );
-
-            while (fakeCursor.moveToNext()) {
-                String fakeWord = safeWord(fakeCursor.getString(0));
-
-                if (!fakeWord.isEmpty() && !question.options.contains(fakeWord)) {
-                    question.options.add(fakeWord);
-                }
+            if (MODE_CHINESE_TO_ENGLISH.equals(quizMode)) {
+                question.questionClue = formatQuestionClue(translation);
+                question.correctOption = word;
+                question.options.add(word);
+            } else {
+                question.questionClue = word;
+                question.correctOption = compactTranslation(translation);
+                question.options.add(question.correctOption);
             }
 
-            fakeCursor.close();
+            appendDistractorOptions(db, question);
 
             if (question.options.size() == 4) {
                 Collections.shuffle(question.options);
@@ -202,17 +202,55 @@ public class QuizActivity extends AppCompatActivity {
 
         cursor.close();
 
-        if (!questionList.isEmpty()) {
-            progressBar.setMax(questionList.size());
+        if (questionList.size() < QUIZ_QUESTION_COUNT) {
+            Toast.makeText(
+                    this,
+                    "测试题生成失败，请稍后重试",
+                    Toast.LENGTH_LONG
+            ).show();
+
+            finish();
+            return false;
         }
+
+        progressBar.setMax(questionList.size());
+
+        return true;
     }
 
-    private String safeWord(String word) {
-        if (word == null) {
-            return "";
+    private void appendDistractorOptions(SQLiteDatabase db, Question question) {
+        Cursor fakeCursor = db.rawQuery(
+                "SELECT word, translation " +
+                        "FROM ecdict " +
+                        "WHERE word != ? " +
+                        "AND translation IS NOT NULL " +
+                        "AND TRIM(translation) != '' " +
+                        "ORDER BY RANDOM() " +
+                        "LIMIT 80",
+                new String[]{question.answerWord}
+        );
+
+        while (fakeCursor.moveToNext() && question.options.size() < 4) {
+            String candidate;
+
+            if (MODE_CHINESE_TO_ENGLISH.equals(quizMode)) {
+                candidate = safeText(fakeCursor.getString(0));
+            } else {
+                candidate = compactTranslation(fakeCursor.getString(1));
+            }
+
+            if (!candidate.isEmpty()
+                    && !candidate.equals(question.correctOption)
+                    && !question.options.contains(candidate)) {
+                question.options.add(candidate);
+            }
         }
 
-        return word.trim();
+        fakeCursor.close();
+    }
+
+    private String safeText(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private String formatQuestionClue(String clue) {
@@ -220,10 +258,38 @@ public class QuizActivity extends AppCompatActivity {
             return "暂无释义";
         }
 
-        // 将词库中可能出现的字符“\n”真正显示为换行
         return clue.trim()
                 .replace("\\r", "")
                 .replace("\\n", "\n");
+    }
+
+    /*
+     * 看英选中时，不直接把极长释义塞进按钮。
+     * 优先取第一条释义，并限制长度，避免按钮内容溢出。
+     */
+    private String compactTranslation(String translation) {
+        String formatted = formatQuestionClue(translation);
+
+        String[] lines = formatted.split("\n");
+
+        String firstLine = "";
+
+        for (String line : lines) {
+            if (line != null && !line.trim().isEmpty()) {
+                firstLine = line.trim();
+                break;
+            }
+        }
+
+        if (firstLine.isEmpty()) {
+            firstLine = formatted.replace("\n", " ").trim();
+        }
+
+        if (firstLine.length() > 42) {
+            return firstLine.substring(0, 42) + "…";
+        }
+
+        return firstLine;
     }
 
     private void showQuestion() {
@@ -233,21 +299,35 @@ public class QuizActivity extends AppCompatActivity {
             return;
         }
 
-        // 只有正常完成全部题目才保存成绩
         if (currentQuizIndex >= questionList.size()) {
             saveTestRecord();
             showResultDialog();
             return;
         }
 
+        Question question = questionList.get(currentQuizIndex);
+
         progressBar.setProgress(currentQuizIndex + 1);
 
-        Question question = questionList.get(currentQuizIndex);
+        if (MODE_CHINESE_TO_ENGLISH.equals(quizMode)) {
+            tvQuestionTitle.setText(
+                    "第 " + (currentQuizIndex + 1) + " / " + questionList.size()
+                            + " 题 · 请根据中文释义选择正确的英文单词："
+            );
+
+            tvQuestionContent.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        } else {
+            tvQuestionTitle.setText(
+                    "第 " + (currentQuizIndex + 1) + " / " + questionList.size()
+                            + " 题 · 请根据英文单词选择正确的中文释义："
+            );
+
+            tvQuestionContent.setTextSize(TypedValue.COMPLEX_UNIT_SP, 28);
+        }
 
         tvQuestionContent.setText(question.questionClue);
 
         layoutOptions.setVisibility(View.VISIBLE);
-        layoutDictation.setVisibility(View.GONE);
 
         btnOptionA.setText(question.options.get(0));
         btnOptionB.setText(question.options.get(1));
@@ -262,46 +342,25 @@ public class QuizActivity extends AppCompatActivity {
 
         Question question = questionList.get(currentQuizIndex);
 
-        if (question.answerWord.equalsIgnoreCase(selectedOption.trim())) {
+        if (question.correctOption.equals(selectedOption.trim())) {
             score++;
+
             Toast.makeText(this, "回答正确！", Toast.LENGTH_SHORT).show();
         } else {
+            String answerText;
+
+            if (MODE_CHINESE_TO_ENGLISH.equals(quizMode)) {
+                answerText = question.answerWord;
+            } else {
+                answerText = question.correctOption;
+            }
+
             Toast.makeText(
                     this,
-                    "回答错误，正确答案是：" + question.answerWord,
+                    "回答错误，正确答案是：" + answerText,
                     Toast.LENGTH_SHORT
             ).show();
         }
-
-        currentQuizIndex++;
-        showQuestion();
-    }
-
-    private void checkDictAnswer() {
-        if (currentQuizIndex >= questionList.size()) {
-            return;
-        }
-
-        Question question = questionList.get(currentQuizIndex);
-        String input = etDictInput.getText().toString().trim();
-
-        if (input.isEmpty()) {
-            Toast.makeText(this, "请输入单词拼写", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        if (question.answerWord.equalsIgnoreCase(input)) {
-            score++;
-            Toast.makeText(this, "拼写正确！", Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(
-                    this,
-                    "拼写错误，正确写法是：" + question.answerWord,
-                    Toast.LENGTH_SHORT
-            ).show();
-        }
-
-        etDictInput.setText("");
 
         currentQuizIndex++;
         showQuestion();
@@ -318,8 +377,13 @@ public class QuizActivity extends AppCompatActivity {
         int wrong = total - score;
         int percent = total == 0 ? 0 : Math.round(score * 100f / total);
 
+        String modeName = MODE_CHINESE_TO_ENGLISH.equals(quizMode)
+                ? "看中选英"
+                : "看英选中";
+
         String message =
-                "总题数：" + total + " 题\n" +
+                "测试模式：" + modeName + "\n\n" +
+                        "总题数：" + total + " 题\n" +
                         "答对：" + score + " 题\n" +
                         "答错：" + wrong + " 题\n" +
                         "正确率：" + percent + "%";
@@ -328,9 +392,14 @@ public class QuizActivity extends AppCompatActivity {
                 .setTitle("本次测试成绩")
                 .setMessage(message)
                 .setCancelable(false)
+                .setNegativeButton("返回模式选择", (dialog, which) -> finish())
                 .setPositiveButton("返回主页", (dialog, which) -> {
                     Intent intent = new Intent(QuizActivity.this, MainActivity.class);
-                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    intent.setFlags(
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                    | Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    );
+
                     startActivity(intent);
                     finish();
                 })
@@ -351,13 +420,12 @@ public class QuizActivity extends AppCompatActivity {
     }
 
     private void exitQuizWithoutSaving() {
-        // 额外保险：禁止后续任何情况下写入测试记录
         quizCancelled = true;
         testRecordSaved = true;
 
         Toast.makeText(this, "已退出测试，本次成绩未保存", Toast.LENGTH_SHORT).show();
 
-        // QuizActivity 是从 MainActivity 打开的，直接 finish 即可回到主页
+        // 直接回到测试模式选择页
         finish();
     }
 
@@ -366,37 +434,7 @@ public class QuizActivity extends AppCompatActivity {
         showExitConfirmDialog();
     }
 
-    private void playOnlineVoice() {
-        if (questionList.isEmpty() || currentQuizIndex >= questionList.size()) {
-            return;
-        }
-
-        Question question = questionList.get(currentQuizIndex);
-
-        String url = "https://dict.youdao.com/dictvoice?type=1&audio=" + question.answerWord;
-        MediaPlayer mediaPlayer = new MediaPlayer();
-
-        try {
-            mediaPlayer.setDataSource(url);
-            mediaPlayer.prepareAsync();
-
-            mediaPlayer.setOnPreparedListener(MediaPlayer::start);
-
-            mediaPlayer.setOnCompletionListener(MediaPlayer::release);
-
-            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
-                Toast.makeText(this, "发音播放失败，请检查网络", Toast.LENGTH_SHORT).show();
-                mp.release();
-                return true;
-            });
-        } catch (IOException e) {
-            Toast.makeText(this, "发音加载失败，请检查网络", Toast.LENGTH_SHORT).show();
-            mediaPlayer.release();
-        }
-    }
-
     private void saveTestRecord() {
-        // 中途退出时绝不写入 test_record
         if (quizCancelled || testRecordSaved) {
             return;
         }
@@ -407,7 +445,13 @@ public class QuizActivity extends AppCompatActivity {
 
         ContentValues values = new ContentValues();
         values.put("user_id", currentUserId);
-        values.put("test_type", "看中选英");
+
+        if (MODE_CHINESE_TO_ENGLISH.equals(quizMode)) {
+            values.put("test_type", "看中选英");
+        } else {
+            values.put("test_type", "看英选中");
+        }
+
         values.put("total_questions", questionList.size());
         values.put("correct_count", score);
         values.put("test_date", System.currentTimeMillis());

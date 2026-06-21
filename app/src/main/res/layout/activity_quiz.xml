@@ -10,7 +10,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:paddingLeft="18dp"
-        android:paddingTop="20dp"
+        android:paddingTop="18dp"
         android:paddingRight="18dp"
         android:paddingBottom="24dp">
 
@@ -58,11 +58,10 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="22dp"
             android:layout_marginBottom="12dp"
-            android:text="请根据以下释义选择正确的英文单词："
             android:textColor="#6F7F8F"
-            android:textSize="17sp" />
+            android:textSize="16sp" />
 
-        <!-- 动态高度释义框：内容多时自动向下扩展 -->
+        <!-- 动态释义 / 英文题干框 -->
         <TextView
             android:id="@+id/tvQuestionContent"
             android:layout_width="match_parent"
@@ -73,12 +72,11 @@
             android:gravity="center"
             android:lineSpacingExtra="4dp"
             android:padding="18dp"
-            android:text="题目释义"
             android:textColor="#1D2A3A"
             android:textSize="20sp"
             android:textStyle="bold" />
 
-        <!-- 选择题选项 -->
+        <!-- 四个选项 -->
         <LinearLayout
             android:id="@+id/layoutOptions"
             android:layout_width="match_parent"
@@ -89,87 +87,62 @@
             <Button
                 android:id="@+id/btnOptionA"
                 android:layout_width="match_parent"
-                android:layout_height="54dp"
+                android:layout_height="64dp"
                 android:layout_marginBottom="14dp"
                 android:backgroundTint="#FFFFFF"
-                android:text="option A"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="2"
+                android:text="选项 A"
                 android:textAllCaps="false"
                 android:textColor="#1F4E86"
-                android:textSize="18sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
 
             <Button
                 android:id="@+id/btnOptionB"
                 android:layout_width="match_parent"
-                android:layout_height="54dp"
+                android:layout_height="64dp"
                 android:layout_marginBottom="14dp"
                 android:backgroundTint="#FFFFFF"
-                android:text="option B"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="2"
+                android:text="选项 B"
                 android:textAllCaps="false"
                 android:textColor="#1F4E86"
-                android:textSize="18sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
 
             <Button
                 android:id="@+id/btnOptionC"
                 android:layout_width="match_parent"
-                android:layout_height="54dp"
+                android:layout_height="64dp"
                 android:layout_marginBottom="14dp"
                 android:backgroundTint="#FFFFFF"
-                android:text="option C"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="2"
+                android:text="选项 C"
                 android:textAllCaps="false"
                 android:textColor="#1F4E86"
-                android:textSize="18sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
 
             <Button
                 android:id="@+id/btnOptionD"
                 android:layout_width="match_parent"
-                android:layout_height="54dp"
+                android:layout_height="64dp"
                 android:layout_marginBottom="14dp"
                 android:backgroundTint="#FFFFFF"
-                android:text="option D"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="2"
+                android:text="选项 D"
                 android:textAllCaps="false"
                 android:textColor="#1F4E86"
-                android:textSize="18sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
-
-        </LinearLayout>
-
-        <!-- 保留原来的听写区域，当前默认隐藏 -->
-        <LinearLayout
-            android:id="@+id/layoutDictation"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <Button
-                android:id="@+id/btnSpeak"
-                android:layout_width="match_parent"
-                android:layout_height="54dp"
-                android:text="播放发音"
-                android:textAllCaps="false"
-                android:textSize="18sp" />
-
-            <EditText
-                android:id="@+id/etDictInput"
-                android:layout_width="match_parent"
-                android:layout_height="54dp"
-                android:layout_marginTop="14dp"
-                android:hint="请输入听到的英文单词"
-                android:singleLine="true"
-                android:textSize="18sp" />
-
-            <Button
-                android:id="@+id/btnSubmitDict"
-                android:layout_width="match_parent"
-                android:layout_height="54dp"
-                android:layout_marginTop="14dp"
-                android:text="提交"
-                android:textAllCaps="false"
-                android:textSize="18sp" />
 
         </LinearLayout>
 

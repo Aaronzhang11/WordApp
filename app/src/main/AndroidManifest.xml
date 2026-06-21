@@ -15,6 +15,7 @@
         android:theme="@style/Theme.WordApp">
 
         <activity android:name=".StudyActivity" />
+        <activity android:name=".TestModeActivity" />
         <activity android:name=".QuizActivity" />
         <activity android:name=".SearchActivity" />
         <activity android:name=".WordDetailActivity" />

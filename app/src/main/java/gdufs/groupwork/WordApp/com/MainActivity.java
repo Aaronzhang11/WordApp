@@ -4,8 +4,6 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -35,6 +33,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         dbHelper = new DatabaseHelper(this);
+
         initViews();
         loadStatistics();
     }
@@ -68,9 +67,9 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // 模拟自测卷
+        // 模拟自测卷：先选择测试模式
         findViewById(R.id.btnTest).setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, QuizActivity.class);
+            Intent intent = new Intent(MainActivity.this, TestModeActivity.class);
             startActivity(intent);
         });
 
@@ -86,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
+        // 学习数据看板
         findViewById(R.id.btnDashboardInline).setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, DashboardActivity.class);
             startActivity(intent);
@@ -96,7 +96,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
-        // 从背单词、测试等页面返回主页后，刷新统计数据
         if (dbHelper != null
                 && sessionManager != null
                 && sessionManager.isLoggedIn()) {
@@ -109,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
         long currentTime = System.currentTimeMillis();
         int currentUserId = sessionManager.getCurrentUserId();
 
-        // 1. 待学习 / 待复习数量
+        // 待学习 / 待复习数量
         Cursor c1 = db.rawQuery(
                 "SELECT COUNT(*) FROM study_record " +
                         "WHERE user_id = ? " +
@@ -127,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
 
         c1.close();
 
-        // 2. 已掌握数量：掌握等级大于等于 3
+        // 已掌握数量
         Cursor c2 = db.rawQuery(
                 "SELECT COUNT(*) FROM study_record " +
                         "WHERE user_id = ? " +
@@ -142,7 +141,7 @@ public class MainActivity extends AppCompatActivity {
 
         c2.close();
 
-        // 3. 词库总量：所有用户共用 ecdict 表
+        // 词库总量
         Cursor c3 = db.rawQuery(
                 "SELECT COUNT(*) FROM ecdict",
                 null
