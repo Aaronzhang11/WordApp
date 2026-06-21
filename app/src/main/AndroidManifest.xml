@@ -17,6 +17,7 @@
         <activity android:name=".StudyActivity" />
         <activity android:name=".QuizActivity" />
         <activity android:name=".SearchActivity" />
+        <activity android:name=".WordDetailActivity" />
         <activity android:name=".RegisterActivity" />
         <activity android:name=".MainActivity" />
         <activity android:name=".GenerateBookActivity" />

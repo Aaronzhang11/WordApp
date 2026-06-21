@@ -1,58 +1,151 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#F6F8FC"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:background="@color/colorBackground">
+    android:paddingLeft="16dp"
+    android:paddingTop="18dp"
+    android:paddingRight="16dp"
+    android:paddingBottom="12dp">
 
+    <!-- 页面顶部 -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:orientation="horizontal"
+        android:layout_height="wrap_content"
         android:gravity="center_vertical"
-        android:layout_marginBottom="12dp">
+        android:orientation="horizontal">
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnBack"
-            android:layout_width="80dp"
-            android:layout_height="45dp"
+            android:layout_width="72dp"
+            android:layout_height="46dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
             android:text="返回"
-            android:textSize="15sp" />
+            android:textAllCaps="false"
+            android:textColor="#2C5282"
+            android:textSize="15sp"
+            app:backgroundTint="#FFFFFF"
+            app:cornerRadius="14dp"
+            app:strokeColor="#D8E2F0"
+            app:strokeWidth="1dp" />
 
-        <TextView
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginLeft="12dp"
             android:layout_weight="1"
-            android:text="中英双向检索"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:textColor="@color/textPrimary" />
+            android:orientation="vertical">
 
-        <Space
-            android:layout_width="80dp"
-            android:layout_height="45dp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="中英双向词典"
+                android:textColor="#1F3B5B"
+                android:textSize="23sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="查询单词、释义并收藏到词本"
+                android:textColor="#718096"
+                android:textSize="13sp" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
-    <EditText
-        android:id="@+id/etSearchInput"
+    <!-- 搜索输入卡片 -->
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:hint="输入英文或中文进行检索..."
-        android:padding="12dp"
-        android:background="@android:color/white"
-        android:drawableStart="@android:drawable/ic_menu_search"
-        android:drawablePadding="10dp"
-        android:layout_marginBottom="16dp" />
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        app:cardBackgroundColor="#FFFFFF"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="2dp"
+        app:strokeColor="#DCE5F0"
+        app:strokeWidth="1dp">
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="12dp">
+
+            <EditText
+                android:id="@+id/etSearchInput"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:background="#F1F5F9"
+                android:hint="输入英文单词或中文释义"
+                android:imeOptions="actionSearch"
+                android:inputType="text"
+                android:paddingLeft="15dp"
+                android:paddingRight="12dp"
+                android:singleLine="true"
+                android:textColor="#1F2937"
+                android:textColorHint="#94A3B8"
+                android:textSize="16sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnClearSearch"
+                android:layout_width="68dp"
+                android:layout_height="50dp"
+                android:layout_marginLeft="10dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="清空"
+                android:textAllCaps="false"
+                android:textColor="#2C5282"
+                android:textSize="14sp"
+                android:visibility="invisible"
+                app:backgroundTint="#E6EEF8"
+                app:cornerRadius="14dp" />
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <TextView
+        android:id="@+id/tvSearchHint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:textColor="#718096"
+        android:textSize="14sp" />
+
+    <!-- 空结果状态 -->
+    <TextView
+        android:id="@+id/tvEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="70dp"
+        android:gravity="center"
+        android:lineSpacingExtra="6dp"
+        android:textColor="#94A3B8"
+        android:textSize="16sp" />
+
+    <!-- 搜索结果 -->
     <ListView
         android:id="@+id/lvSearchResults"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:divider="@color/colorDivider"
-        android:dividerHeight="1dp"
-        android:background="@android:color/white" />
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_weight="1"
+        android:background="@android:color/transparent"
+        android:cacheColorHint="@android:color/transparent"
+        android:clipToPadding="false"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="0dp"
+        android:listSelector="@android:color/transparent"
+        android:paddingBottom="10dp"
+        android:scrollbars="none"
+        android:visibility="gone" />
 
 </LinearLayout>
