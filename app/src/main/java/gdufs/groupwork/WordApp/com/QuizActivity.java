@@ -35,6 +35,7 @@ public class QuizActivity extends AppCompatActivity {
     private Button btnOptionC;
     private Button btnOptionD;
     private Button btnSubmitDict;
+    private Button btnExitQuiz;
 
     private EditText etDictInput;
 
@@ -43,11 +44,13 @@ public class QuizActivity extends AppCompatActivity {
 
     private int currentUserId;
     private final List<Question> questionList = new ArrayList<>();
+
     private int currentQuizIndex = 0;
     private int score = 0;
 
     private boolean testRecordSaved = false;
     private boolean resultDialogShown = false;
+    private boolean quizCancelled = false;
 
     private static class Question {
         String answerWord;
@@ -92,22 +95,26 @@ public class QuizActivity extends AppCompatActivity {
 
         etDictInput = findViewById(R.id.etDictInput);
         btnSubmitDict = findViewById(R.id.btnSubmitDict);
+        btnExitQuiz = findViewById(R.id.btnExitQuiz);
 
         disableButtonAllCaps(btnOptionA);
         disableButtonAllCaps(btnOptionB);
         disableButtonAllCaps(btnOptionC);
         disableButtonAllCaps(btnOptionD);
         disableButtonAllCaps(btnSubmitDict);
+        disableButtonAllCaps(btnExitQuiz);
 
         View.OnClickListener optionClickListener = v -> {
-            Button btn = (Button) v;
-            checkChoiceAnswer(btn.getText().toString());
+            Button button = (Button) v;
+            checkChoiceAnswer(button.getText().toString());
         };
 
         btnOptionA.setOnClickListener(optionClickListener);
         btnOptionB.setOnClickListener(optionClickListener);
         btnOptionC.setOnClickListener(optionClickListener);
         btnOptionD.setOnClickListener(optionClickListener);
+
+        btnExitQuiz.setOnClickListener(v -> showExitConfirmDialog());
 
         View btnSpeak = findViewById(R.id.btnSpeak);
         if (btnSpeak != null) {
@@ -148,8 +155,10 @@ public class QuizActivity extends AppCompatActivity {
                 new String[]{String.valueOf(currentUserId)}
         );
 
+        // 当前用户的学习记录不足 10 个时，从整个词库随机取题
         if (cursor.getCount() < 10) {
             cursor.close();
+
             cursor = db.rawQuery(
                     "SELECT word, translation FROM ecdict ORDER BY RANDOM() LIMIT 10",
                     null
@@ -157,40 +166,37 @@ public class QuizActivity extends AppCompatActivity {
         }
 
         while (cursor.moveToNext()) {
-            Question q = new Question();
+            Question question = new Question();
 
-            q.answerWord = safeWord(cursor.getString(0));
-            q.questionClue = cursor.getString(1);
+            question.answerWord = safeWord(cursor.getString(0));
+            question.questionClue = formatQuestionClue(cursor.getString(1));
 
-            if (q.answerWord.isEmpty()) {
+            if (question.answerWord.isEmpty()) {
                 continue;
             }
 
-            if (q.questionClue == null || q.questionClue.trim().isEmpty()) {
-                q.questionClue = "暂无释义";
-            }
-
-            q.options.add(q.answerWord);
+            question.options.add(question.answerWord);
 
             Cursor fakeCursor = db.rawQuery(
                     "SELECT word FROM ecdict " +
                             "WHERE word != ? " +
                             "ORDER BY RANDOM() LIMIT 3",
-                    new String[]{q.answerWord}
+                    new String[]{question.answerWord}
             );
 
             while (fakeCursor.moveToNext()) {
                 String fakeWord = safeWord(fakeCursor.getString(0));
-                if (!fakeWord.isEmpty() && !q.options.contains(fakeWord)) {
-                    q.options.add(fakeWord);
+
+                if (!fakeWord.isEmpty() && !question.options.contains(fakeWord)) {
+                    question.options.add(fakeWord);
                 }
             }
 
             fakeCursor.close();
 
-            if (q.options.size() == 4) {
-                Collections.shuffle(q.options);
-                questionList.add(q);
+            if (question.options.size() == 4) {
+                Collections.shuffle(question.options);
+                questionList.add(question);
             }
         }
 
@@ -205,7 +211,19 @@ public class QuizActivity extends AppCompatActivity {
         if (word == null) {
             return "";
         }
+
         return word.trim();
+    }
+
+    private String formatQuestionClue(String clue) {
+        if (clue == null || clue.trim().isEmpty()) {
+            return "暂无释义";
+        }
+
+        // 将词库中可能出现的字符“\n”真正显示为换行
+        return clue.trim()
+                .replace("\\r", "")
+                .replace("\\n", "\n");
     }
 
     private void showQuestion() {
@@ -215,6 +233,7 @@ public class QuizActivity extends AppCompatActivity {
             return;
         }
 
+        // 只有正常完成全部题目才保存成绩
         if (currentQuizIndex >= questionList.size()) {
             saveTestRecord();
             showResultDialog();
@@ -223,17 +242,17 @@ public class QuizActivity extends AppCompatActivity {
 
         progressBar.setProgress(currentQuizIndex + 1);
 
-        Question q = questionList.get(currentQuizIndex);
+        Question question = questionList.get(currentQuizIndex);
 
-        tvQuestionContent.setText(q.questionClue);
+        tvQuestionContent.setText(question.questionClue);
 
         layoutOptions.setVisibility(View.VISIBLE);
         layoutDictation.setVisibility(View.GONE);
 
-        btnOptionA.setText(q.options.get(0));
-        btnOptionB.setText(q.options.get(1));
-        btnOptionC.setText(q.options.get(2));
-        btnOptionD.setText(q.options.get(3));
+        btnOptionA.setText(question.options.get(0));
+        btnOptionB.setText(question.options.get(1));
+        btnOptionC.setText(question.options.get(2));
+        btnOptionD.setText(question.options.get(3));
     }
 
     private void checkChoiceAnswer(String selectedOption) {
@@ -241,15 +260,15 @@ public class QuizActivity extends AppCompatActivity {
             return;
         }
 
-        Question q = questionList.get(currentQuizIndex);
+        Question question = questionList.get(currentQuizIndex);
 
-        if (q.answerWord.equalsIgnoreCase(selectedOption.trim())) {
+        if (question.answerWord.equalsIgnoreCase(selectedOption.trim())) {
             score++;
             Toast.makeText(this, "回答正确！", Toast.LENGTH_SHORT).show();
         } else {
             Toast.makeText(
                     this,
-                    "回答错误，正确答案是：" + q.answerWord,
+                    "回答错误，正确答案是：" + question.answerWord,
                     Toast.LENGTH_SHORT
             ).show();
         }
@@ -263,7 +282,7 @@ public class QuizActivity extends AppCompatActivity {
             return;
         }
 
-        Question q = questionList.get(currentQuizIndex);
+        Question question = questionList.get(currentQuizIndex);
         String input = etDictInput.getText().toString().trim();
 
         if (input.isEmpty()) {
@@ -271,18 +290,19 @@ public class QuizActivity extends AppCompatActivity {
             return;
         }
 
-        if (q.answerWord.equalsIgnoreCase(input)) {
+        if (question.answerWord.equalsIgnoreCase(input)) {
             score++;
             Toast.makeText(this, "拼写正确！", Toast.LENGTH_SHORT).show();
         } else {
             Toast.makeText(
                     this,
-                    "拼写错误，正确写法是：" + q.answerWord,
+                    "拼写错误，正确写法是：" + question.answerWord,
                     Toast.LENGTH_SHORT
             ).show();
         }
 
         etDictInput.setText("");
+
         currentQuizIndex++;
         showQuestion();
     }
@@ -317,14 +337,43 @@ public class QuizActivity extends AppCompatActivity {
                 .show();
     }
 
+    private void showExitConfirmDialog() {
+        if (resultDialogShown) {
+            return;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("退出测试")
+                .setMessage("退出后，本次测试不会保存成绩和记录，是否确认退出？")
+                .setNegativeButton("继续测试", null)
+                .setPositiveButton("确认退出", (dialog, which) -> exitQuizWithoutSaving())
+                .show();
+    }
+
+    private void exitQuizWithoutSaving() {
+        // 额外保险：禁止后续任何情况下写入测试记录
+        quizCancelled = true;
+        testRecordSaved = true;
+
+        Toast.makeText(this, "已退出测试，本次成绩未保存", Toast.LENGTH_SHORT).show();
+
+        // QuizActivity 是从 MainActivity 打开的，直接 finish 即可回到主页
+        finish();
+    }
+
+    @Override
+    public void onBackPressed() {
+        showExitConfirmDialog();
+    }
+
     private void playOnlineVoice() {
         if (questionList.isEmpty() || currentQuizIndex >= questionList.size()) {
             return;
         }
 
-        Question q = questionList.get(currentQuizIndex);
-        String url = "https://dict.youdao.com/dictvoice?type=1&audio=" + q.answerWord;
+        Question question = questionList.get(currentQuizIndex);
 
+        String url = "https://dict.youdao.com/dictvoice?type=1&audio=" + question.answerWord;
         MediaPlayer mediaPlayer = new MediaPlayer();
 
         try {
@@ -332,6 +381,7 @@ public class QuizActivity extends AppCompatActivity {
             mediaPlayer.prepareAsync();
 
             mediaPlayer.setOnPreparedListener(MediaPlayer::start);
+
             mediaPlayer.setOnCompletionListener(MediaPlayer::release);
 
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
@@ -339,7 +389,6 @@ public class QuizActivity extends AppCompatActivity {
                 mp.release();
                 return true;
             });
-
         } catch (IOException e) {
             Toast.makeText(this, "发音加载失败，请检查网络", Toast.LENGTH_SHORT).show();
             mediaPlayer.release();
@@ -347,7 +396,8 @@ public class QuizActivity extends AppCompatActivity {
     }
 
     private void saveTestRecord() {
-        if (testRecordSaved) {
+        // 中途退出时绝不写入 test_record
+        if (quizCancelled || testRecordSaved) {
             return;
         }
 

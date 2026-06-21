@@ -10,15 +10,44 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:paddingLeft="18dp"
+        android:paddingTop="20dp"
         android:paddingRight="18dp"
-        android:paddingTop="24dp"
         android:paddingBottom="24dp">
+
+        <!-- 顶部标题与退出按钮 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="模拟自测卷"
+                android:textColor="#1F4E86"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnExitQuiz"
+                android:layout_width="92dp"
+                android:layout_height="40dp"
+                android:backgroundTint="#D9534F"
+                android:text="退出测试"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="14sp" />
+
+        </LinearLayout>
 
         <ProgressBar
             android:id="@+id/progressBar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
             android:layout_height="8dp"
+            android:layout_marginTop="18dp"
             android:max="10"
             android:progress="1"
             android:progressTint="#1F4E86" />
@@ -27,30 +56,35 @@
             android:id="@+id/tvQuestionTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:layout_marginBottom="12dp"
             android:text="请根据以下释义选择正确的英文单词："
             android:textColor="#6F7F8F"
-            android:textSize="17sp"
-            android:layout_marginTop="26dp"
-            android:layout_marginBottom="12dp" />
+            android:textSize="17sp" />
 
+        <!-- 动态高度释义框：内容多时自动向下扩展 -->
         <TextView
             android:id="@+id/tvQuestionContent"
             android:layout_width="match_parent"
-            android:layout_height="120dp"
+            android:layout_height="wrap_content"
+            android:minHeight="120dp"
             android:background="#FFFFFF"
+            android:elevation="3dp"
             android:gravity="center"
+            android:lineSpacingExtra="4dp"
             android:padding="18dp"
             android:text="题目释义"
             android:textColor="#1D2A3A"
-            android:textSize="25sp"
+            android:textSize="20sp"
             android:textStyle="bold" />
 
+        <!-- 选择题选项 -->
         <LinearLayout
             android:id="@+id/layoutOptions"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginTop="28dp">
+            android:layout_marginTop="28dp"
+            android:orientation="vertical">
 
             <Button
                 android:id="@+id/btnOptionA"
@@ -102,13 +136,14 @@
 
         </LinearLayout>
 
+        <!-- 保留原来的听写区域，当前默认隐藏 -->
         <LinearLayout
             android:id="@+id/layoutDictation"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
             android:orientation="vertical"
-            android:visibility="gone"
-            android:layout_marginTop="28dp">
+            android:visibility="gone">
 
             <Button
                 android:id="@+id/btnSpeak"
