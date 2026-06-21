@@ -1,200 +1,254 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@color/colorBackground"
-    android:padding="16dp">
+    android:background="#F7FAFC"
+    android:fillViewport="true">
 
-    <!-- 顶部应用标题栏 -->
-    <TextView
-        android:id="@+id/tvAppTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="单词记忆系统"
-        android:textColor="@color/colorPrimary"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="24dp"/>
-
-    <!-- 数据面板 -->
-    <com.google.android.material.card.MaterialCardView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        style="@style/Widget.WordApp.CardView"
-        android:layout_marginBottom="20dp"
-        app:cardPreventCornerOverlap="true">
+        android:orientation="vertical"
+        android:paddingLeft="16dp"
+        android:paddingTop="22dp"
+        android:paddingRight="16dp"
+        android:paddingBottom="16dp">
 
+        <!-- 原来的页面标题，不使用 Toolbar -->
+        <TextView
+            android:id="@+id/tvMainTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="单词记忆系统"
+            android:textColor="#2C5282"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <!-- 今日学习进度 + 右侧数据看板小按钮 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:layout_marginTop="28dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:text="今日学习进度"
-                android:textColor="@color/textPrimary"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="12dp"/>
+                android:textColor="#2D3748"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:weightSum="3">
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDashboardInline"
+                android:layout_width="96dp"
+                android:layout_height="36dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:text="数据看板"
+                android:textAllCaps="false"
+                android:textColor="#2C5282"
+                android:textSize="12sp"
+                app:backgroundTint="#E6EEF8"
+                app:cornerRadius="18dp"
+                app:strokeColor="#B7CAE2"
+                app:strokeWidth="1dp" />
 
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView
-                        android:id="@+id/tvToStudyCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="@color/colorPrimary"
-                        android:textSize="20sp"
-                        android:textStyle="bold"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="待背/复习"
-                        android:textColor="@color/textSecondary"
-                        android:textSize="12sp"/>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView
-                        android:id="@+id/tvMasteredCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="@color/colorSuccess"
-                        android:textSize="20sp"
-                        android:textStyle="bold"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="已掌握"
-                        android:textColor="@color/textSecondary"
-                        android:textSize="12sp"/>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView
-                        android:id="@+id/tvTotalCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="@color/textPrimary"
-                        android:textSize="20sp"
-                        android:textStyle="bold"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="词库总数"
-                        android:textColor="@color/textSecondary"
-                        android:textSize="12sp"/>
-                </LinearLayout>
-            </LinearLayout>
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
 
-    <!-- 功能导航按钮 -->
-    <TextView
-        android:id="@+id/tvCurrentUser"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="当前用户："
-        android:textSize="16sp"
-        android:textColor="@color/textSecondary"
-        android:gravity="center"
-        android:layout_marginBottom="12dp" />
+        <!-- 学习统计卡片 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="#FFFFFF"
+            android:elevation="4dp"
+            android:orientation="horizontal"
+            android:padding="16dp">
 
-    <Button
-        android:id="@+id/btnLogout"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:text="退出登录"
-        android:textSize="15sp"
-        android:backgroundTint="@color/colorDivider"
-        android:textColor="@color/textPrimary"
-        android:layout_marginBottom="20dp" />
+            <!-- 待背 / 复习 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
 
-    <Button
-        android:id="@+id/btnGenerateBook"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:text="生成词书"
-        android:textSize="16sp"
-        android:backgroundTint="@color/colorPrimary"
-        android:textColor="@android:color/white"
-        android:layout_marginBottom="12dp" />
+                <TextView
+                    android:id="@+id/tvToStudyCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0"
+                    android:textColor="#2C5282"
+                    android:textSize="24sp"
+                    android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/btnStudy"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:text="开始背单词 (卡片模式)"
-        android:textSize="16sp"
-        android:backgroundTint="@color/colorPrimary"
-        android:layout_marginBottom="12dp"
-        app:icon="@android:drawable/ic_media_play"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="待背/复习"
+                    android:textColor="#718096"
+                    android:textSize="12sp" />
 
-    <Button
-        android:id="@+id/btnTest"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:text="模拟自测卷"
-        android:textSize="16sp"
-        android:backgroundTint="@color/colorAccent"
-        android:layout_marginBottom="12dp"
-        app:icon="@android:drawable/ic_menu_edit"/>
+            </LinearLayout>
 
-    <Button
-        android:id="@+id/btnSearch"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:text="中英双向检索 (词典)"
-        android:textSize="16sp"
-        android:backgroundTint="@color/colorPrimary"
-        android:layout_marginBottom="12dp"
-        app:icon="@android:drawable/ic_menu_search"/>
+            <!-- 已掌握 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
 
-    <Button
-        android:id="@+id/btnDashboard"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_marginBottom="12dp"
-        android:text="学习数据看板"
-        android:textSize="16sp"
-        android:textColor="@android:color/white"
-        android:backgroundTint="@color/colorPrimary"
-        app:icon="@android:drawable/ic_menu_view" />
+                <TextView
+                    android:id="@+id/tvMasteredCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0"
+                    android:textColor="#38A169"
+                    android:textSize="24sp"
+                    android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/btnWordBook"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:text="我的自定义单词本"
-        android:textSize="16sp"
-        android:textColor="@color/textPrimary"
-        android:backgroundTint="@color/colorDivider"
-        app:icon="@android:drawable/ic_input_get"/>
-</LinearLayout>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="已掌握"
+                    android:textColor="#718096"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
+            <!-- 词库总数 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvTotalCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0"
+                    android:textColor="#2D3748"
+                    android:textSize="24sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="词库总数"
+                    android:textColor="#718096"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvCurrentUser"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:text="当前用户："
+            android:textColor="#718096"
+            android:textSize="15sp" />
+
+        <!-- 退出登录 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLogout"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="12dp"
+            android:text="退出登录"
+            android:textColor="#2D3748"
+            android:textSize="16sp"
+            app:backgroundTint="#E2E8F0"
+            app:cornerRadius="4dp" />
+
+        <!-- 生成词书 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnGenerateBook"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="24dp"
+            android:text="生成词书"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            app:backgroundTint="#2C5282"
+            app:cornerRadius="4dp" />
+
+        <!-- 开始背单词 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnStudy"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:text="开始背单词（卡片模式）"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            app:backgroundTint="#2C5282"
+            app:cornerRadius="4dp"
+            app:icon="@android:drawable/ic_media_play"
+            app:iconGravity="textStart"
+            app:iconTint="@android:color/white" />
+
+        <!-- 模拟自测卷 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnTest"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:text="模拟自测卷"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            app:backgroundTint="#319795"
+            app:cornerRadius="4dp"
+            app:icon="@android:drawable/ic_menu_edit"
+            app:iconGravity="textStart"
+            app:iconTint="@android:color/white" />
+
+        <!-- 单词查询 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSearch"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:text="中英双向检索（词典）"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            app:backgroundTint="#2C5282"
+            app:cornerRadius="4dp"
+            app:icon="@android:drawable/ic_menu_search"
+            app:iconGravity="textStart"
+            app:iconTint="@android:color/white" />
+
+        <!-- 自定义单词本 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnWordBook"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="16dp"
+            android:text="我的自定义单词本"
+            android:textColor="#2D3748"
+            android:textSize="16sp"
+            app:backgroundTint="#E2E8F0"
+            app:cornerRadius="4dp"
+            app:icon="@android:drawable/ic_input_get"
+            app:iconGravity="textStart"
+            app:iconTint="#718096" />
+
+    </LinearLayout>
+
+</ScrollView>

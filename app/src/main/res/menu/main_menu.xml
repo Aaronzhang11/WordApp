@@ -5,6 +5,6 @@
     <item
         android:id="@+id/action_dashboard"
         android:title="数据看板"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="always" />
 
 </menu>

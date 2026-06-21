@@ -4,17 +4,21 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
-import android.widget.Button;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.TextView;
-import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
 
-
 public class MainActivity extends AppCompatActivity {
-    private TextView tvToStudyCount, tvMasteredCount, tvTotalCount;
+
+    private TextView tvToStudyCount;
+    private TextView tvMasteredCount;
+    private TextView tvTotalCount;
+    private TextView tvCurrentUser;
+
     private DatabaseHelper dbHelper;
     private UserSessionManager sessionManager;
-    private TextView tvCurrentUser;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,10 +43,11 @@ public class MainActivity extends AppCompatActivity {
         tvToStudyCount = findViewById(R.id.tvToStudyCount);
         tvMasteredCount = findViewById(R.id.tvMasteredCount);
         tvTotalCount = findViewById(R.id.tvTotalCount);
-
         tvCurrentUser = findViewById(R.id.tvCurrentUser);
+
         tvCurrentUser.setText("当前用户：" + sessionManager.getCurrentUsername());
 
+        // 退出登录
         findViewById(R.id.btnLogout).setOnClickListener(v -> {
             sessionManager.logout();
 
@@ -51,33 +56,38 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
+        // 生成词书
         findViewById(R.id.btnGenerateBook).setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, GenerateBookActivity.class);
             startActivity(intent);
         });
 
+        // 开始背单词
         findViewById(R.id.btnStudy).setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, StudyActivity.class);
             startActivity(intent);
         });
 
+        // 模拟自测卷
         findViewById(R.id.btnTest).setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, QuizActivity.class);
             startActivity(intent);
         });
 
+        // 中英双向检索
         findViewById(R.id.btnSearch).setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, SearchActivity.class);
             startActivity(intent);
         });
 
-        findViewById(R.id.btnDashboard).setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, DashboardActivity.class);
+        // 我的自定义单词本
+        findViewById(R.id.btnWordBook).setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, WordBookActivity.class);
             startActivity(intent);
         });
 
-        findViewById(R.id.btnWordBook).setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, WordBookActivity.class);
+        findViewById(R.id.btnDashboardInline).setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, DashboardActivity.class);
             startActivity(intent);
         });
     }
@@ -85,7 +95,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        loadStatistics();
+
+        // 从背单词、测试等页面返回主页后，刷新统计数据
+        if (dbHelper != null
+                && sessionManager != null
+                && sessionManager.isLoggedIn()) {
+            loadStatistics();
+        }
     }
 
     private void loadStatistics() {
@@ -93,10 +109,12 @@ public class MainActivity extends AppCompatActivity {
         long currentTime = System.currentTimeMillis();
         int currentUserId = sessionManager.getCurrentUserId();
 
-        // 1. 获取当前用户的待学习/待复习统计
+        // 1. 待学习 / 待复习数量
         Cursor c1 = db.rawQuery(
                 "SELECT COUNT(*) FROM study_record " +
-                        "WHERE user_id = ? AND is_ignored = 0 AND next_review_time <= ?",
+                        "WHERE user_id = ? " +
+                        "AND is_ignored = 0 " +
+                        "AND next_review_time <= ?",
                 new String[]{
                         String.valueOf(currentUserId),
                         String.valueOf(currentTime)
@@ -106,26 +124,34 @@ public class MainActivity extends AppCompatActivity {
         if (c1.moveToFirst()) {
             tvToStudyCount.setText(String.valueOf(c1.getInt(0)));
         }
+
         c1.close();
 
-        // 2. 获取当前用户的已掌握统计 master_level >= 3
+        // 2. 已掌握数量：掌握等级大于等于 3
         Cursor c2 = db.rawQuery(
                 "SELECT COUNT(*) FROM study_record " +
-                        "WHERE user_id = ? AND master_level >= 3",
+                        "WHERE user_id = ? " +
+                        "AND is_ignored = 0 " +
+                        "AND master_level >= 3",
                 new String[]{String.valueOf(currentUserId)}
         );
 
         if (c2.moveToFirst()) {
             tvMasteredCount.setText(String.valueOf(c2.getInt(0)));
         }
+
         c2.close();
 
-        // 3. 词库总量是公共数据，不需要 user_id
-        Cursor c3 = db.rawQuery("SELECT COUNT(*) FROM ecdict", null);
+        // 3. 词库总量：所有用户共用 ecdict 表
+        Cursor c3 = db.rawQuery(
+                "SELECT COUNT(*) FROM ecdict",
+                null
+        );
 
         if (c3.moveToFirst()) {
             tvTotalCount.setText(String.valueOf(c3.getInt(0)));
         }
+
         c3.close();
     }
 }
