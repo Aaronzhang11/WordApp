@@ -15,7 +15,7 @@
         android:paddingRight="16dp"
         android:paddingBottom="20dp">
 
-        <!-- 顶部：标题 + 用户头像 -->
+        <!-- 顶部标题与右上角头像 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -31,7 +31,6 @@
                 android:textSize="26sp"
                 android:textStyle="bold" />
 
-            <!-- 头像文字由 MainActivity 根据用户名自动设置 -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnProfileAvatar"
                 android:layout_width="54dp"
@@ -52,7 +51,7 @@
 
         </LinearLayout>
 
-        <!-- 今日学习进度标题 + 数据看板入口 -->
+        <!-- 学习进度标题 + 数据看板 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -88,7 +87,7 @@
 
         </LinearLayout>
 
-        <!-- 三项统计卡片 -->
+        <!-- 三项统计 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -105,7 +104,6 @@
                 android:orientation="horizontal"
                 android:padding="16dp">
 
-                <!-- 待背/复习 -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -132,7 +130,6 @@
 
                 </LinearLayout>
 
-                <!-- 已掌握 -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -159,7 +156,6 @@
 
                 </LinearLayout>
 
-                <!-- 词库总数 -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -190,35 +186,20 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 生成词书 -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnGenerateBook"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="34dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:text="生成词书"
-            android:textAllCaps="false"
-            android:textColor="@android:color/white"
-            android:textSize="16sp"
-            app:backgroundTint="#2C5282"
-            app:cornerRadius="6dp" />
-
-        <!-- 开始背单词 -->
+        <!-- 合并后的学习入口 -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnStudy"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="12dp"
+            android:layout_height="58dp"
+            android:layout_marginTop="34dp"
             android:insetTop="0dp"
             android:insetBottom="0dp"
-            android:text="开始背单词（卡片模式）"
+            android:text="开始学习"
             android:textAllCaps="false"
             android:textColor="@android:color/white"
-            android:textSize="16sp"
+            android:textSize="17sp"
             app:backgroundTint="#2C5282"
-            app:cornerRadius="6dp"
+            app:cornerRadius="8dp"
             app:icon="@android:drawable/ic_media_play"
             app:iconGravity="textStart"
             app:iconTint="@android:color/white" />
@@ -241,7 +222,7 @@
             app:iconGravity="textStart"
             app:iconTint="@android:color/white" />
 
-        <!-- 中英双向词典 -->
+        <!-- 中英双向检索 -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSearch"
             android:layout_width="match_parent"
