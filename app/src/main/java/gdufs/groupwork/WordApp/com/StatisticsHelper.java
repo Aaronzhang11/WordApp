@@ -12,36 +12,50 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * 学习统计数据模块：按当前词书范围汇总看板数据。
+ */
 public class StatisticsHelper {
-    private SQLiteDatabase db;
-    private int currentUserId;
+
+    private final SQLiteDatabase db;
+    private final int currentUserId;
+    private final VocabBookManager.TagFilter bookFilter;
+    private final int bookWordCount;
 
     public StatisticsHelper(Context context) {
         DatabaseHelper helper = new DatabaseHelper(context);
         db = helper.getReadableDatabase();
         UserSessionManager sessionManager = new UserSessionManager(context);
         currentUserId = sessionManager.getCurrentUserId();
+
+        VocabBookManager vocabBookManager = new VocabBookManager(context);
+        VocabBookManager.VocabBook currentBook = vocabBookManager.getCurrentBook(currentUserId);
+        bookFilter = VocabBookManager.buildTagFilter(currentBook.tags, "e");
+        bookWordCount = currentBook.wordCount;
     }
 
+    /**
+     * 获取首页数据看板所需的汇总指标。
+     */
     public DashboardData getDashboardData() {
         DashboardData data = new DashboardData();
+        data.totalWords = bookWordCount;
 
-        // 1. 总单词数（来自 ecdict 表）
-        Cursor c = db.rawQuery("SELECT COUNT(*) FROM ecdict", null);
-        if (c.moveToFirst()) {
-            data.totalWords = c.getInt(0);
-        }
-        c.close();
-
-        // 2. 各状态数量（来自 study_record 表）
-        // master_level: 0=未学, 1=学习中, 2=已掌握, >=3 已掌握（与 MainActivity 逻辑一致）
-        c = db.rawQuery(
-                "SELECT master_level, COUNT(*) FROM study_record WHERE user_id = ? AND is_ignored = 0 GROUP BY master_level",
-                new String[]{String.valueOf(currentUserId)}
+        // 1. 当前词书内各掌握程度数量
+        Cursor levelCursor = db.rawQuery(
+                "SELECT s.master_level, COUNT(*) "
+                        + "FROM study_record s "
+                        + "JOIN ecdict e ON s.word = e.word "
+                        + "WHERE s.user_id = ? AND s.is_ignored = 0 AND "
+                        + bookFilter.whereClause
+                        + " GROUP BY s.master_level",
+                prependUserId(bookFilter.args)
         );
-        while (c.moveToNext()) {
-            int level = c.getInt(0);
-            int count = c.getInt(1);
+
+        while (levelCursor.moveToNext()) {
+            int level = levelCursor.getInt(0);
+            int count = levelCursor.getInt(1);
+
             if (level == 0) {
                 data.unlearned = count;
             } else if (level == 1 || level == 2) {
@@ -50,67 +64,113 @@ public class StatisticsHelper {
                 data.mastered += count;
             }
         }
-        c.close();
 
-        // 3. 今日新增学习（使用 next_review_time 作为最近学习时间）
+        levelCursor.close();
+
+        // 2. 今日学习数量（当前词书范围内）
         String today = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
-        c = db.rawQuery(
-                "SELECT COUNT(*) FROM study_record WHERE user_id = ? AND is_ignored = 0 AND date(next_review_time/1000, 'unixepoch') = ?",
-                new String[]{String.valueOf(currentUserId), today}
+        Cursor todayCursor = db.rawQuery(
+                "SELECT COUNT(*) FROM study_record s "
+                        + "JOIN ecdict e ON s.word = e.word "
+                        + "WHERE s.user_id = ? AND s.is_ignored = 0 "
+                        + "AND date(s.next_review_time/1000, 'unixepoch') = ? AND "
+                        + bookFilter.whereClause,
+                prependUserIdAndDate(bookFilter.args, today)
         );
-        if (c.moveToFirst()) {
-            data.todayNew = c.getInt(0);
+
+        if (todayCursor.moveToFirst()) {
+            data.todayNew = todayCursor.getInt(0);
         }
-        c.close();
 
-        // 4. 连续学习天数（从今天往前推，每天至少有一条学习记录）
+        todayCursor.close();
+
+        // 3. 连续学习天数与近 7 天趋势
         data.consecutiveDays = calculateConsecutiveDays();
-
-        // 5. 近7天学习趋势
         data.last7DaysCount = getLast7DaysCount();
 
         return data;
     }
 
+    /**
+     * 从今天往前统计连续有学习记录的天数。
+     */
     private int calculateConsecutiveDays() {
         int days = 0;
         Calendar cal = Calendar.getInstance();
+
         while (true) {
-            String dateStr = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(cal.getTime());
-            Cursor c = db.rawQuery(
-                    "SELECT COUNT(*) FROM study_record WHERE user_id = ? AND is_ignored = 0 AND date(next_review_time/1000, 'unixepoch') = ?",
-                    new String[]{String.valueOf(currentUserId), dateStr}
+            String dateStr = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                    .format(cal.getTime());
+
+            Cursor cursor = db.rawQuery(
+                    "SELECT COUNT(*) FROM study_record s "
+                            + "JOIN ecdict e ON s.word = e.word "
+                            + "WHERE s.user_id = ? AND s.is_ignored = 0 "
+                            + "AND date(s.next_review_time/1000, 'unixepoch') = ? AND "
+                            + bookFilter.whereClause,
+                    prependUserIdAndDate(bookFilter.args, dateStr)
             );
-            if (c.moveToFirst() && c.getInt(0) > 0) {
+
+            if (cursor.moveToFirst() && cursor.getInt(0) > 0) {
                 days++;
                 cal.add(Calendar.DAY_OF_YEAR, -1);
-                c.close();
             } else {
-                c.close();
+                cursor.close();
                 break;
             }
+
+            cursor.close();
         }
+
         return days;
     }
 
+    /**
+     * 获取近 7 天每日学习数量（从 6 天前到今天）。
+     */
     private List<Integer> getLast7DaysCount() {
         List<Integer> list = new ArrayList<>();
         Calendar cal = Calendar.getInstance();
+
         for (int i = 0; i < 7; i++) {
-            String dateStr = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(cal.getTime());
-            Cursor c = db.rawQuery(
-                    "SELECT COUNT(*) FROM study_record WHERE user_id = ? AND is_ignored = 0 AND date(next_review_time/1000, 'unixepoch') = ?",
-                    new String[]{String.valueOf(currentUserId), dateStr}
+            String dateStr = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                    .format(cal.getTime());
+
+            Cursor cursor = db.rawQuery(
+                    "SELECT COUNT(*) FROM study_record s "
+                            + "JOIN ecdict e ON s.word = e.word "
+                            + "WHERE s.user_id = ? AND s.is_ignored = 0 "
+                            + "AND date(s.next_review_time/1000, 'unixepoch') = ? AND "
+                            + bookFilter.whereClause,
+                    prependUserIdAndDate(bookFilter.args, dateStr)
             );
-            if (c.moveToFirst()) {
-                list.add(c.getInt(0));
+
+            if (cursor.moveToFirst()) {
+                list.add(cursor.getInt(0));
             } else {
                 list.add(0);
             }
-            c.close();
+
+            cursor.close();
             cal.add(Calendar.DAY_OF_YEAR, -1);
         }
-        Collections.reverse(list); // 从远到近
+
+        Collections.reverse(list);
         return list;
+    }
+
+    private String[] prependUserId(String[] filterArgs) {
+        String[] merged = new String[filterArgs.length + 1];
+        merged[0] = String.valueOf(currentUserId);
+        System.arraycopy(filterArgs, 0, merged, 1, filterArgs.length);
+        return merged;
+    }
+
+    private String[] prependUserIdAndDate(String[] filterArgs, String date) {
+        String[] merged = new String[filterArgs.length + 2];
+        merged[0] = String.valueOf(currentUserId);
+        merged[1] = date;
+        System.arraycopy(filterArgs, 0, merged, 2, filterArgs.length);
+        return merged;
     }
 }

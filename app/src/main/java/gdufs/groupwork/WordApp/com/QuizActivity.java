@@ -147,14 +147,14 @@ public class QuizActivity extends AppCompatActivity {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
         Cursor cursor = db.rawQuery(
-                "SELECT e.word, e.translation " +
-                        "FROM study_record s " +
-                        "JOIN ecdict e ON s.word = e.word " +
-                        "WHERE s.user_id = ? " +
-                        "AND s.master_level > 0 " +
-                        "AND s.is_ignored = 0 " +
-                        "ORDER BY RANDOM() " +
-                        "LIMIT " + QUIZ_QUESTION_COUNT,
+                "SELECT e.word, e.translation "
+                        + "FROM study_record s "
+                        + "JOIN ecdict e ON s.word = e.word "
+                        + "WHERE s.user_id = ? "
+                        + "AND s.master_level > 0 "
+                        + "AND s.is_ignored = 0 "
+                        + "ORDER BY RANDOM() "
+                        + "LIMIT " + QUIZ_QUESTION_COUNT,
                 new String[]{String.valueOf(currentUserId)}
         );
 
@@ -220,13 +220,13 @@ public class QuizActivity extends AppCompatActivity {
 
     private void appendDistractorOptions(SQLiteDatabase db, Question question) {
         Cursor fakeCursor = db.rawQuery(
-                "SELECT word, translation " +
-                        "FROM ecdict " +
-                        "WHERE word != ? " +
-                        "AND translation IS NOT NULL " +
-                        "AND TRIM(translation) != '' " +
-                        "ORDER BY RANDOM() " +
-                        "LIMIT 80",
+                "SELECT word, translation "
+                        + "FROM ecdict "
+                        + "WHERE word != ? "
+                        + "AND translation IS NOT NULL "
+                        + "AND TRIM(translation) != '' "
+                        + "ORDER BY RANDOM() "
+                        + "LIMIT 80",
                 new String[]{question.answerWord}
         );
 
@@ -425,7 +425,6 @@ public class QuizActivity extends AppCompatActivity {
 
         Toast.makeText(this, "已退出测试，本次成绩未保存", Toast.LENGTH_SHORT).show();
 
-        // 直接回到测试模式选择页
         finish();
     }
 

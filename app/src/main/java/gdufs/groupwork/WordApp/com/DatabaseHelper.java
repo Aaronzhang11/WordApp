@@ -14,7 +14,7 @@ import java.io.InputStream;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "word_app.db";
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 3;
 
     private final Context context;
     private final String dbPath;
@@ -130,6 +130,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "total_questions INTEGER NOT NULL, " +
                 "correct_count INTEGER NOT NULL, " +
                 "test_date INTEGER NOT NULL, " +
+                "FOREIGN KEY(user_id) REFERENCES user_info(user_id) ON DELETE CASCADE)");
+
+        // 6. 词书表：按 ECDICT 标签自定义学习范围
+        db.execSQL("CREATE TABLE IF NOT EXISTS vocab_book (" +
+                "book_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "user_id INTEGER NOT NULL DEFAULT 0, " +
+                "book_name TEXT NOT NULL, " +
+                "tags TEXT NOT NULL, " +
+                "create_time INTEGER NOT NULL, " +
+                "UNIQUE(user_id, book_name), " +
                 "FOREIGN KEY(user_id) REFERENCES user_info(user_id) ON DELETE CASCADE)");
 
         /*

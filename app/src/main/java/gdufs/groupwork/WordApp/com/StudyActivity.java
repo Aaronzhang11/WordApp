@@ -30,6 +30,12 @@ import java.util.List;
 
 public class StudyActivity extends AppCompatActivity {
 
+    public static final String EXTRA_STUDY_MODE = "study_mode";
+    /** 今日任务：先复习旧词，再学新词（受每日配额限制） */
+    public static final String MODE_TODAY = "TODAY";
+    /** 学习新词：随机陌生词，无每日上限 */
+    public static final String MODE_NEW_WORDS = "NEW_WORDS";
+
     // 正面内容
     private TextView tvWord;
     private TextView tvPhonetic;
@@ -43,9 +49,16 @@ public class StudyActivity extends AppCompatActivity {
     // 等级进度条
     private ProgressBar progressLevel;
 
+    // 今日任务进度（仅 MODE_TODAY）
+    private View layoutTodayProgress;
+    private ProgressBar progressTodayTask;
+    private TextView tvTodayTaskProgress;
+    private int todayTaskTotal;
+
     // 卡片与操作区域
     private View cardFront;
     private View cardBack;
+    private View flipContainer;
     private LinearLayout controlPanel;
     private MaterialCardView wordCardView;
 
@@ -55,8 +68,13 @@ public class StudyActivity extends AppCompatActivity {
 
     private DatabaseHelper dbHelper;
     private UserSessionManager sessionManager;
+    private StudyPlanManager planManager;
+    private VocabBookManager vocabBookManager;
 
     private int currentUserId;
+    private String studyMode;
+    /** 当前词书标签，空列表表示全词库 */
+    private List<String> currentBookTags = new ArrayList<>();
 
     // 当前卡片是否已经翻到背面
     private boolean isBackVisible = false;
@@ -69,6 +87,11 @@ public class StudyActivity extends AppCompatActivity {
 
     // 当前正在学习第几个单词
     private int currentIndex = 0;
+
+    // 艾宾浩斯记忆曲线：三个复习级别对应 1 天、3 天、7 天记忆等级
+    // 理想时间线（学习日为第 1 天）：第 2 天 / 第 4 天 / 第 8 天复习
+    private static final long ONE_DAY_MS = 24L * 60 * 60 * 1000;
+    private static final long SEVEN_DAYS_MS = 7L * ONE_DAY_MS;
 
     private static class WordItem {
         String word;
@@ -95,10 +118,47 @@ public class StudyActivity extends AppCompatActivity {
         }
 
         currentUserId = sessionManager.getCurrentUserId();
+        planManager = new StudyPlanManager(this);
+        vocabBookManager = new VocabBookManager(this);
+        currentBookTags = vocabBookManager.getCurrentBook(currentUserId).tags;
+
+        studyMode = getIntent().getStringExtra(EXTRA_STUDY_MODE);
+        if (studyMode == null) {
+            studyMode = MODE_NEW_WORDS;
+        }
 
         initViews();
         loadStudyQueue();
+        setupTodayTaskProgress();
         showCurrentWord();
+    }
+
+    /**
+     * 今日任务模式下显示本轮队列进度条。
+     */
+    private void setupTodayTaskProgress() {
+        if (MODE_TODAY.equals(studyMode)) {
+            todayTaskTotal = studyQueue.size();
+            layoutTodayProgress.setVisibility(View.VISIBLE);
+            updateTodayTaskProgress();
+        } else {
+            layoutTodayProgress.setVisibility(View.GONE);
+        }
+    }
+
+    /**
+     * 刷新今日任务进度条。
+     */
+    private void updateTodayTaskProgress() {
+        if (!MODE_TODAY.equals(studyMode) || todayTaskTotal <= 0) {
+            return;
+        }
+
+        progressTodayTask.setMax(todayTaskTotal);
+        progressTodayTask.setProgress(Math.min(currentIndex, todayTaskTotal));
+        tvTodayTaskProgress.setText(
+                "今日任务 " + currentIndex + " / " + todayTaskTotal
+        );
     }
 
     private void initViews() {
@@ -114,8 +174,12 @@ public class StudyActivity extends AppCompatActivity {
 
         // 进度条与卡片
         progressLevel = findViewById(R.id.progressLevel);
+        layoutTodayProgress = findViewById(R.id.layoutTodayProgress);
+        progressTodayTask = findViewById(R.id.progressTodayTask);
+        tvTodayTaskProgress = findViewById(R.id.tvTodayTaskProgress);
         cardFront = findViewById(R.id.layoutCardFront);
         cardBack = findViewById(R.id.layoutCardBack);
+        flipContainer = findViewById(R.id.flipContainer);
         controlPanel = findViewById(R.id.controlPanel);
         wordCardView = findViewById(R.id.wordCardView);
 
@@ -123,10 +187,10 @@ public class StudyActivity extends AppCompatActivity {
         btnFavorite = findViewById(R.id.btnFavorite);
         btnDelete = findViewById(R.id.btnDelete);
 
-        // 设置翻转动画的“镜头距离”，避免翻转时有过强透视变形
-        wordCardView.post(() -> {
+        // 设置翻转动画的“镜头距离”，仅作用于下方内容区，单词与音标保持不动
+        flipContainer.post(() -> {
             float density = getResources().getDisplayMetrics().density;
-            wordCardView.setCameraDistance(8000 * density);
+            flipContainer.setCameraDistance(8000 * density);
         });
 
         // 返回主页
@@ -147,64 +211,197 @@ public class StudyActivity extends AppCompatActivity {
     }
 
     /**
-     * 从当前用户的学习记录中读取“到期需要复习”的单词。
+     * 按学习模式加载待学队列。
      */
     private void loadStudyQueue() {
         studyQueue.clear();
+        currentIndex = 0;
 
+        if (MODE_TODAY.equals(studyMode)) {
+            loadTodayTaskQueue();
+        } else if (MODE_NEW_WORDS.equals(studyMode)) {
+            appendRandomUnfamiliarWord();
+        }
+    }
+
+    /**
+     * 今日任务队列：先加载到期复习词，再加载新词。
+     */
+    private void loadTodayTaskQueue() {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         long now = System.currentTimeMillis();
+        planManager.ensureToday(currentUserId);
+
+        int reviewLimit = planManager.getRemainingReviewQuota(currentUserId);
+
+        if (reviewLimit > 0) {
+            Cursor reviewCursor = db.rawQuery(
+                    "SELECT e.word, e.phonetic, e.translation, s.master_level "
+                            + "FROM study_record s "
+                            + "JOIN ecdict e ON s.word = e.word "
+                            + "WHERE s.user_id = ? "
+                            + "AND s.is_ignored = 0 "
+                            + "AND s.master_level > 0 "
+                            + "AND s.next_review_time <= ? "
+                            + "ORDER BY s.next_review_time ASC "
+                            + "LIMIT ?",
+                    new String[]{
+                            String.valueOf(currentUserId),
+                            String.valueOf(now),
+                            String.valueOf(reviewLimit)
+                    }
+            );
+
+            appendWordsFromCursor(reviewCursor);
+        }
+
+        int newLimit = planManager.getRemainingNewQuota(currentUserId);
+
+        if (newLimit > 0) {
+            int unfamiliarInPlan = countUnfamiliarInPlan(db);
+
+            if (unfamiliarInPlan < newLimit) {
+                StudyTaskHelper.generateNewWords(
+                        db,
+                        currentUserId,
+                        newLimit - unfamiliarInPlan,
+                        currentBookTags
+                );
+            }
+
+            Cursor newCursor = db.rawQuery(
+                    "SELECT e.word, e.phonetic, e.translation, s.master_level "
+                            + "FROM study_record s "
+                            + "JOIN ecdict e ON s.word = e.word "
+                            + "WHERE s.user_id = ? "
+                            + "AND s.is_ignored = 0 "
+                            + "AND s.master_level = 0 "
+                            + "ORDER BY RANDOM() "
+                            + "LIMIT ?",
+                    new String[]{
+                            String.valueOf(currentUserId),
+                            String.valueOf(newLimit)
+                    }
+            );
+
+            appendWordsFromCursor(newCursor);
+        }
+    }
+
+    /**
+     * 学习新词模式：随机追加一个陌生单词。
+     */
+    private boolean appendRandomUnfamiliarWord() {
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
 
         Cursor cursor = db.rawQuery(
-                "SELECT e.word, e.phonetic, e.translation, s.master_level " +
-                        "FROM study_record s " +
-                        "JOIN ecdict e ON s.word = e.word " +
-                        "WHERE s.user_id = ? " +
-                        "AND s.is_ignored = 0 " +
-                        "AND s.next_review_time <= ? " +
-                        "LIMIT 50",
-                new String[]{
-                        String.valueOf(currentUserId),
-                        String.valueOf(now)
-                }
+                "SELECT e.word, e.phonetic, e.translation, s.master_level "
+                        + "FROM study_record s "
+                        + "JOIN ecdict e ON s.word = e.word "
+                        + "WHERE s.user_id = ? "
+                        + "AND s.is_ignored = 0 "
+                        + "AND s.master_level = 0 "
+                        + "ORDER BY RANDOM() "
+                        + "LIMIT 1",
+                new String[]{String.valueOf(currentUserId)}
         );
 
-        while (cursor.moveToNext()) {
-            WordItem item = new WordItem();
-
-            item.word = cursor.getString(0);
-            item.phonetic = cursor.getString(1);
-            item.translation = cursor.getString(2);
-            item.level = cursor.getInt(3);
-
-            studyQueue.add(item);
+        if (cursor.moveToNext()) {
+            studyQueue.add(buildWordItem(cursor));
+            cursor.close();
+            return true;
         }
 
         cursor.close();
+
+        if (StudyTaskHelper.generateNewWords(db, currentUserId, 1, currentBookTags) <= 0) {
+            return false;
+        }
+
+        Cursor retryCursor = db.rawQuery(
+                "SELECT e.word, e.phonetic, e.translation, s.master_level "
+                        + "FROM study_record s "
+                        + "JOIN ecdict e ON s.word = e.word "
+                        + "WHERE s.user_id = ? "
+                        + "AND s.is_ignored = 0 "
+                        + "AND s.master_level = 0 "
+                        + "ORDER BY RANDOM() "
+                        + "LIMIT 1",
+                new String[]{String.valueOf(currentUserId)}
+        );
+
+        if (retryCursor.moveToNext()) {
+            studyQueue.add(buildWordItem(retryCursor));
+            retryCursor.close();
+            return true;
+        }
+
+        retryCursor.close();
+        return false;
+    }
+
+    private int countUnfamiliarInPlan(SQLiteDatabase db) {
+        return StudyTaskHelper.countUnfamiliarWords(db, currentUserId);
+    }
+
+    private void appendWordsFromCursor(Cursor cursor) {
+        while (cursor.moveToNext()) {
+            studyQueue.add(buildWordItem(cursor));
+        }
+        cursor.close();
+    }
+
+    private WordItem buildWordItem(Cursor cursor) {
+        WordItem item = new WordItem();
+        item.word = cursor.getString(0);
+        item.phonetic = cursor.getString(1);
+        item.translation = cursor.getString(2);
+        item.level = cursor.getInt(3);
+        return item;
     }
 
     /**
      * 显示当前单词，同时重置卡片到正面状态。
      */
     private void showCurrentWord() {
+        if (currentIndex >= studyQueue.size()) {
+            if (MODE_NEW_WORDS.equals(studyMode)) {
+                if (appendRandomUnfamiliarWord()) {
+                    // 继续展示新追加的单词
+                } else {
+                    Toast.makeText(
+                            this,
+                            "没有更多可学习的陌生单词",
+                            Toast.LENGTH_LONG
+                    ).show();
+                    finish();
+                    return;
+                }
+            } else if (MODE_TODAY.equals(studyMode)) {
+                Toast.makeText(
+                        this,
+                        "今日的学习任务已完成！",
+                        Toast.LENGTH_LONG
+                ).show();
+                finish();
+                return;
+            } else {
+                Toast.makeText(
+                        this,
+                        "当前没有待学习单词",
+                        Toast.LENGTH_LONG
+                ).show();
+                finish();
+                return;
+            }
+        }
+
         if (studyQueue.isEmpty()) {
             Toast.makeText(
                     this,
-                    "当前没有待学习单词，请先生成词书",
+                    "当前没有待学习单词",
                     Toast.LENGTH_LONG
             ).show();
-
-            finish();
-            return;
-        }
-
-        if (currentIndex >= studyQueue.size()) {
-            Toast.makeText(
-                    this,
-                    "今日的学习任务已完成！",
-                    Toast.LENGTH_LONG
-            ).show();
-
             finish();
             return;
         }
@@ -212,12 +409,7 @@ public class StudyActivity extends AppCompatActivity {
         WordItem item = studyQueue.get(currentIndex);
 
         tvWord.setText(safeText(item.word));
-
-        if (item.phonetic == null || item.phonetic.trim().isEmpty()) {
-            tvPhonetic.setText("暂无音标");
-        } else {
-            tvPhonetic.setText(item.phonetic.trim());
-        }
+        tvPhonetic.setText(formatPhonetic(item.phonetic));
 
         if (item.translation == null || item.translation.trim().isEmpty()) {
             tvTranslation.setText("暂无释义");
@@ -238,6 +430,9 @@ public class StudyActivity extends AppCompatActivity {
 
         // 更新收藏图标
         updateFavoriteIcon(item.word);
+
+        // 今日任务模式更新队列进度
+        updateTodayTaskProgress();
     }
 
     /**
@@ -254,28 +449,28 @@ public class StudyActivity extends AppCompatActivity {
         switch (level) {
             case 0:
                 badgeText = "等级 0 · 待学习";
-                detailText = "当前掌握程度：0级 · 新词，建议重点记忆";
+                detailText = "当前掌握程度：0级 · 新词，首次复习安排在第 2 天";
                 textColor = Color.parseColor("#475569");
                 backgroundColor = Color.parseColor("#E2E8F0");
                 break;
 
             case 1:
-                badgeText = "等级 1 · 陌生";
-                detailText = "当前掌握程度：1级 · 已学习过，建议尽快复习";
+                badgeText = "等级 1 · 1 天级";
+                detailText = "当前掌握程度：1级 · 首次复习，答对后 2 天进入第二次复习";
                 textColor = Color.parseColor("#2563EB");
                 backgroundColor = Color.parseColor("#DBEAFE");
                 break;
 
             case 2:
-                badgeText = "等级 2 · 模糊";
-                detailText = "当前掌握程度：2级 · 已有印象，继续巩固";
+                badgeText = "等级 2 · 3 天级";
+                detailText = "当前掌握程度：2级 · 第二次复习，答对后 4 天进入第三次复习";
                 textColor = Color.parseColor("#C2410C");
                 backgroundColor = Color.parseColor("#FFEDD5");
                 break;
 
             default:
-                badgeText = "等级 3 · 已掌握";
-                detailText = "当前掌握程度：3级 · 掌握良好，进入长期复习";
+                badgeText = "等级 3 · 7 天级";
+                detailText = "当前掌握程度：3级 · 已掌握，按 7 天周期长期复习";
                 textColor = Color.parseColor("#15803D");
                 backgroundColor = Color.parseColor("#DCFCE7");
                 break;
@@ -320,8 +515,8 @@ public class StudyActivity extends AppCompatActivity {
         isBackVisible = false;
         isFlipping = false;
 
-        wordCardView.animate().cancel();
-        wordCardView.setRotationY(0f);
+        flipContainer.animate().cancel();
+        flipContainer.setRotationY(0f);
 
         cardFront.setVisibility(View.VISIBLE);
         cardFront.setAlpha(1f);
@@ -352,7 +547,7 @@ public class StudyActivity extends AppCompatActivity {
         isFlipping = true;
 
         ObjectAnimator flipOut = ObjectAnimator.ofFloat(
-                wordCardView,
+                flipContainer,
                 "rotationY",
                 0f,
                 90f
@@ -372,10 +567,10 @@ public class StudyActivity extends AppCompatActivity {
                 cardBack.setAlpha(1f);
 
                 // 背面从另一侧转回来
-                wordCardView.setRotationY(-90f);
+                flipContainer.setRotationY(-90f);
 
                 ObjectAnimator flipIn = ObjectAnimator.ofFloat(
-                        wordCardView,
+                        flipContainer,
                         "rotationY",
                         -90f,
                         0f
@@ -409,7 +604,50 @@ public class StudyActivity extends AppCompatActivity {
     }
 
     /**
+     * 答对后按目标记忆等级安排下次复习间隔。
+     * 以学习日为第 1 天：升至 1 级 → 第 2 天，升至 2 级 → 第 4 天，升至 3 级 → 第 8 天。
+     */
+    private long getSuccessIntervalMs(int targetLevel) {
+        switch (targetLevel) {
+            case 1:
+                return ONE_DAY_MS;
+            case 2:
+                return 2L * ONE_DAY_MS;
+            case 3:
+                return 4L * ONE_DAY_MS;
+            default:
+                return SEVEN_DAYS_MS;
+        }
+    }
+
+    /**
+     * 答错跌落后，按跌落等级的记忆曲线重新安排复习间隔。
+     */
+    private long getFallIntervalMs(int fallenLevel) {
+        switch (fallenLevel) {
+            case 0:
+            case 1:
+                return ONE_DAY_MS;
+            case 2:
+                return 2L * ONE_DAY_MS;
+            default:
+                return 4L * ONE_DAY_MS;
+        }
+    }
+
+    /**
+     * 答错时按记忆曲线跌落一级，并安排对应级别的复习间隔。
+     */
+    private int getFallenLevel(int currentLevel) {
+        return Math.max(0, currentLevel - 1);
+    }
+
+    /**
      * 点击“认识”或“不认识”后更新掌握等级和复习时间。
+     *
+     * 记忆曲线安排：
+     * - 认识：升一级，按 1 天 / 3 天 / 7 天安排下次复习
+     * - 不认识：跌落一级，按跌落后的等级间隔重新安排
      */
     private void processAnswer(boolean knew) {
         if (studyQueue.isEmpty() || currentIndex >= studyQueue.size()) {
@@ -422,33 +660,18 @@ public class StudyActivity extends AppCompatActivity {
         long interval;
 
         if (knew) {
-            // 认识：等级最高到 3
-            nextLevel = Math.min(3, item.level + 1);
-
-            switch (nextLevel) {
-                case 1:
-                    // 第一次认识：5 分钟后复习
-                    interval = 5 * 60 * 1000L;
-                    break;
-
-                case 2:
-                    // 第二次认识：1 天后复习
-                    interval = 24 * 60 * 60 * 1000L;
-                    break;
-
-                case 3:
-                    // 已掌握：7 天后复习
-                    interval = 7 * 24 * 60 * 60 * 1000L;
-                    break;
-
-                default:
-                    interval = 14 * 24 * 60 * 60 * 1000L;
-                    break;
+            if (item.level >= 3) {
+                // 已掌握词再次认识：保持 3 级，按 7 天周期长期复习
+                nextLevel = 3;
+                interval = SEVEN_DAYS_MS;
+            } else {
+                nextLevel = item.level + 1;
+                interval = getSuccessIntervalMs(nextLevel);
             }
         } else {
-            // 不认识：降为 0 级，1 分钟后重新进入复习队列
-            nextLevel = 0;
-            interval = 60 * 1000L;
+            // 答错：跌落一级，按跌落后的记忆等级安排复习
+            nextLevel = getFallenLevel(item.level);
+            interval = getFallIntervalMs(nextLevel);
         }
 
         long nextReviewTime = System.currentTimeMillis() + interval;
@@ -486,6 +709,15 @@ public class StudyActivity extends AppCompatActivity {
                     values,
                     SQLiteDatabase.CONFLICT_IGNORE
             );
+        }
+
+        // 今日任务模式：记录每日进度（复习词 level>0，新词 level==0）
+        if (MODE_TODAY.equals(studyMode)) {
+            if (item.level > 0) {
+                planManager.incrementTodayReviewCompleted(currentUserId);
+            } else {
+                planManager.incrementTodayNewCompleted(currentUserId);
+            }
         }
 
         currentIndex++;
@@ -778,5 +1010,23 @@ public class StudyActivity extends AppCompatActivity {
 
     private String safeText(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    /**
+     * 将音标格式化为中括号包裹的形式，例如 [ˈspelɪŋ]。
+     */
+    private String formatPhonetic(String phonetic) {
+        if (phonetic == null || phonetic.trim().isEmpty()) {
+            return "[暂无音标]";
+        }
+
+        String trimmed = phonetic.trim();
+
+        // 数据库中可能已带括号，避免重复包裹
+        if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+            return trimmed;
+        }
+
+        return "[" + trimmed + "]";
     }
 }

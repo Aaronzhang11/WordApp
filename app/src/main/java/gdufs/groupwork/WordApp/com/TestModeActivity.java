@@ -2,24 +2,21 @@ package gdufs.groupwork.WordApp.com;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.View;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.FragmentTransaction;
 
+/**
+ * 模拟测试独立入口：承载 TestModeFragment，保留原有页面布局不变。
+ */
 public class TestModeActivity extends AppCompatActivity {
 
     private UserSessionManager sessionManager;
 
-    private View btnBack;
-    private View btnChineseToEnglish;
-    private View btnEnglishToChinese;
-    private View btnListening;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_test_mode);
+        setContentView(R.layout.activity_fragment_host);
 
         sessionManager = new UserSessionManager(this);
 
@@ -31,35 +28,13 @@ public class TestModeActivity extends AppCompatActivity {
             return;
         }
 
-        initViews();
-    }
-
-    private void initViews() {
-        btnBack = findViewById(R.id.btnBack);
-        btnChineseToEnglish = findViewById(R.id.btnChineseToEnglish);
-        btnEnglishToChinese = findViewById(R.id.btnEnglishToChinese);
-        btnListening = findViewById(R.id.btnListening);
-
-        btnBack.setOnClickListener(v -> finish());
-
-        btnChineseToEnglish.setOnClickListener(v ->
-                startQuiz(QuizActivity.MODE_CHINESE_TO_ENGLISH)
-        );
-
-        btnEnglishToChinese.setOnClickListener(v ->
-                startQuiz(QuizActivity.MODE_ENGLISH_TO_CHINESE)
-        );
-
-        btnListening.setOnClickListener(v -> Toast.makeText(
-                TestModeActivity.this,
-                "听力模式正在优化中，暂未开放",
-                Toast.LENGTH_SHORT
-        ).show());
-    }
-
-    private void startQuiz(String quizMode) {
-        Intent intent = new Intent(TestModeActivity.this, QuizActivity.class);
-        intent.putExtra(QuizActivity.EXTRA_QUIZ_MODE, quizMode);
-        startActivity(intent);
+        if (savedInstanceState == null) {
+            FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+            transaction.replace(
+                    R.id.fragment_host_container,
+                    TestModeFragment.newInstance(true)
+            );
+            transaction.commit();
+        }
     }
 }

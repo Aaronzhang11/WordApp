@@ -51,14 +51,46 @@
 
     </LinearLayout>
 
+    <!-- 今日学习任务进度（仅「开始学习」模式显示） -->
+    <LinearLayout
+        android:id="@+id/layoutTodayProgress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/topBar"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tvTodayTaskProgress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="今日任务 0 / 0"
+            android:textColor="#2C5282"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <ProgressBar
+            android:id="@+id/progressTodayTask"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:layout_marginTop="6dp"
+            android:max="100"
+            android:progress="0"
+            android:progressBackgroundTint="#E2E8F0"
+            android:progressTint="#2C5282" />
+
+    </LinearLayout>
+
     <!-- 单词卡片区域 -->
     <FrameLayout
         android:id="@+id/cardContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@+id/controlPanel"
-        android:layout_below="@id/topBar"
-        android:layout_marginTop="18dp"
+        android:layout_below="@id/layoutTodayProgress"
+        android:layout_marginTop="12dp"
         android:layout_marginBottom="18dp">
 
         <com.google.android.material.card.MaterialCardView
@@ -72,130 +104,152 @@
             app:strokeColor="#E2E8F0"
             app:strokeWidth="1dp">
 
-            <RelativeLayout
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                android:gravity="center_horizontal"
+                android:orientation="vertical"
                 android:padding="24dp">
 
-                <!-- 正面：单词、音标、掌握等级 -->
-                <LinearLayout
-                    android:id="@+id/layoutCardFront"
+                <!-- 掌握等级与进度（始终可见） -->
+                <TextView
+                    android:id="@+id/tvLevelBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingLeft="14dp"
+                    android:paddingTop="7dp"
+                    android:paddingRight="14dp"
+                    android:paddingBottom="7dp"
+                    android:text="等级 0 · 待学习"
+                    android:textColor="#475569"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvProgressText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:text="掌握进度 0 / 3"
+                    android:textColor="#475569"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <ProgressBar
+                    android:id="@+id/progressLevel"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="160dp"
+                    android:layout_height="7dp"
+                    android:layout_marginTop="8dp"
+                    android:max="3"
+                    android:progress="0"
+                    android:progressBackgroundTint="#E2E8F0"
+                    android:progressTint="#475569" />
+
+                <!-- 单词与音标（点击翻转后仍保持显示） -->
+                <TextView
+                    android:id="@+id/tvWord"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="28dp"
                     android:gravity="center"
-                    android:orientation="vertical"
-                    android:visibility="visible">
+                    android:text="Spelling"
+                    android:textColor="#1F2937"
+                    android:textSize="36sp"
+                    android:textStyle="bold" />
 
-                    <TextView
-                        android:id="@+id/tvLevelBadge"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:paddingLeft="14dp"
-                        android:paddingTop="7dp"
-                        android:paddingRight="14dp"
-                        android:paddingBottom="7dp"
-                        android:text="等级 0 · 待学习"
-                        android:textColor="#475569"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/tvPhonetic"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="[phonetic]"
+                    android:textColor="#718096"
+                    android:textSize="18sp" />
 
-                    <TextView
-                        android:id="@+id/tvProgressText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="18dp"
-                        android:text="掌握进度 0 / 3"
-                        android:textColor="#475569"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
-
-                    <ProgressBar
-                        android:id="@+id/progressLevel"
-                        style="?android:attr/progressBarStyleHorizontal"
-                        android:layout_width="160dp"
-                        android:layout_height="7dp"
-                        android:layout_marginTop="8dp"
-                        android:max="3"
-                        android:progress="0"
-                        android:progressBackgroundTint="#E2E8F0"
-                        android:progressTint="#475569" />
-
-                    <TextView
-                        android:id="@+id/tvWord"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="34dp"
-                        android:gravity="center"
-                        android:text="Spelling"
-                        android:textColor="#1F2937"
-                        android:textSize="36sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvPhonetic"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:text="[phonetic]"
-                        android:textColor="#718096"
-                        android:textSize="18sp" />
-
-                    <TextView
-                        android:id="@+id/tvFlipPrompt"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="38dp"
-                        android:text="点击卡片翻看释义"
-                        android:textColor="#2C5282"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-                <!-- 背面：等级说明、中文释义 -->
-                <LinearLayout
-                    android:id="@+id/layoutCardBack"
+                <!-- 下方内容区：点击后在此翻转显示释义 -->
+                <FrameLayout
+                    android:id="@+id/flipContainer"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:visibility="gone">
+                    android:layout_height="0dp"
+                    android:layout_marginTop="24dp"
+                    android:layout_weight="1">
 
-                    <TextView
-                        android:id="@+id/tvLevelDetail"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:paddingLeft="14dp"
-                        android:paddingTop="7dp"
-                        android:paddingRight="14dp"
-                        android:paddingBottom="7dp"
-                        android:text="当前掌握程度：0级"
-                        android:textColor="#475569"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvTranslation"
+                    <!-- 正面：翻转提示 -->
+                    <LinearLayout
+                        android:id="@+id/layoutCardFront"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="28dp"
+                        android:layout_height="match_parent"
                         android:gravity="center"
-                        android:lineSpacingExtra="6dp"
-                        android:text="这里显示对应的中文解释及详细词义。"
-                        android:textColor="#1F2937"
-                        android:textSize="21sp"
-                        android:textStyle="bold" />
+                        android:orientation="vertical"
+                        android:visibility="visible">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="30dp"
-                        android:text="根据记忆情况选择下方操作"
-                        android:textColor="#718096"
-                        android:textSize="13sp" />
+                        <TextView
+                            android:id="@+id/tvFlipPrompt"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="点击卡片翻看释义"
+                            android:textColor="#2C5282"
+                            android:textSize="13sp" />
 
-                </LinearLayout>
+                    </LinearLayout>
 
-            </RelativeLayout>
+                    <!-- 背面：等级说明与中文释义 -->
+                    <LinearLayout
+                        android:id="@+id/layoutCardBack"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center_horizontal"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/tvLevelDetail"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingLeft="14dp"
+                            android:paddingTop="7dp"
+                            android:paddingRight="14dp"
+                            android:paddingBottom="7dp"
+                            android:text="当前掌握程度：0级"
+                            android:textColor="#475569"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <ScrollView
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_marginTop="16dp"
+                            android:layout_weight="1"
+                            android:fillViewport="true"
+                            android:scrollbars="none">
+
+                            <TextView
+                                android:id="@+id/tvTranslation"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center"
+                                android:lineSpacingExtra="6dp"
+                                android:text="这里显示对应的中文解释及详细词义。"
+                                android:textColor="#1F2937"
+                                android:textSize="21sp"
+                                android:textStyle="bold" />
+
+                        </ScrollView>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="根据记忆情况选择下方操作"
+                            android:textColor="#718096"
+                            android:textSize="13sp" />
+
+                    </LinearLayout>
+
+                </FrameLayout>
+
+            </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
 

@@ -1,8 +1,6 @@
 package gdufs.groupwork.WordApp.com;
 
-import android.content.ContentValues;
 import android.content.Intent;
-import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.text.InputType;
@@ -47,8 +45,10 @@ public class GenerateBookActivity extends AppCompatActivity {
 
     private DatabaseHelper dbHelper;
     private UserSessionManager sessionManager;
+    private VocabBookManager vocabBookManager;
 
     private int currentUserId;
+    private java.util.List<String> currentBookTags = new java.util.ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,6 +57,7 @@ public class GenerateBookActivity extends AppCompatActivity {
 
         dbHelper = new DatabaseHelper(this);
         sessionManager = new UserSessionManager(this);
+        vocabBookManager = new VocabBookManager(this);
 
         // 未登录时回登录页
         if (!sessionManager.isLoggedIn()) {
@@ -76,6 +77,7 @@ public class GenerateBookActivity extends AppCompatActivity {
         }
 
         currentUserId = sessionManager.getCurrentUserId();
+        currentBookTags = vocabBookManager.getCurrentBook(currentUserId).tags;
 
         initViews();
         loadWordCounts();
@@ -125,38 +127,11 @@ public class GenerateBookActivity extends AppCompatActivity {
     private void loadWordCounts() {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
-        // 总词库数量
-        Cursor totalCursor = db.rawQuery(
-                "SELECT COUNT(*) FROM ecdict",
-                null
+        VocabBookManager.VocabBook book = vocabBookManager.getCurrentBook(currentUserId);
+        int totalCount = book.wordCount;
+        int availableCount = StudyTaskHelper.countAvailableNewWords(
+                db, currentUserId, currentBookTags
         );
-
-        int totalCount = 0;
-
-        if (totalCursor.moveToFirst()) {
-            totalCount = totalCursor.getInt(0);
-        }
-
-        totalCursor.close();
-
-        // 当前用户还没有加入学习计划的新词数量
-        Cursor availableCursor = db.rawQuery(
-                "SELECT COUNT(*) FROM ecdict "
-                        + "WHERE word NOT IN ("
-                        + "SELECT word FROM study_record WHERE user_id = ?"
-                        + ")",
-                new String[]{
-                        String.valueOf(currentUserId)
-                }
-        );
-
-        int availableCount = 0;
-
-        if (availableCursor.moveToFirst()) {
-            availableCount = availableCursor.getInt(0);
-        }
-
-        availableCursor.close();
 
         NumberFormat numberFormat = NumberFormat.getInstance(
                 Locale.getDefault()
@@ -212,7 +187,6 @@ public class GenerateBookActivity extends AppCompatActivity {
 
         SQLiteDatabase db = dbHelper.getWritableDatabase();
 
-        // 重新检查当前可用新词数量
         int availableCount = getAvailableNewWordCount(db);
 
         if (availableCount <= 0) {
@@ -236,52 +210,9 @@ public class GenerateBookActivity extends AppCompatActivity {
             ).show();
         }
 
-        Cursor cursor = db.rawQuery(
-                "SELECT word FROM ecdict "
-                        + "WHERE word NOT IN ("
-                        + "SELECT word FROM study_record WHERE user_id = ?"
-                        + ") "
-                        + "ORDER BY RANDOM() LIMIT ?",
-                new String[]{
-                        String.valueOf(currentUserId),
-                        String.valueOf(targetCount)
-                }
+        int insertCount = StudyTaskHelper.generateNewWords(
+                db, currentUserId, targetCount, currentBookTags
         );
-
-        long now = System.currentTimeMillis();
-        int insertCount = 0;
-
-        db.beginTransaction();
-
-        try {
-            while (cursor.moveToNext()) {
-                String word = cursor.getString(0);
-
-                ContentValues values = new ContentValues();
-                values.put("user_id", currentUserId);
-                values.put("word", word);
-                values.put("master_level", 0);
-                values.put("next_review_time", now);
-                values.put("error_count", 0);
-                values.put("is_ignored", 0);
-
-                long result = db.insertWithOnConflict(
-                        "study_record",
-                        null,
-                        values,
-                        SQLiteDatabase.CONFLICT_IGNORE
-                );
-
-                if (result != -1) {
-                    insertCount++;
-                }
-            }
-
-            db.setTransactionSuccessful();
-        } finally {
-            db.endTransaction();
-            cursor.close();
-        }
 
         if (insertCount > 0) {
             Toast.makeText(
@@ -294,6 +225,7 @@ public class GenerateBookActivity extends AppCompatActivity {
                     GenerateBookActivity.this,
                     StudyActivity.class
             );
+            intent.putExtra(StudyActivity.EXTRA_STUDY_MODE, StudyActivity.MODE_NEW_WORDS);
 
             startActivity(intent);
             finish();
@@ -310,24 +242,6 @@ public class GenerateBookActivity extends AppCompatActivity {
      * 获取还未加入当前用户学习计划的单词数量。
      */
     private int getAvailableNewWordCount(SQLiteDatabase db) {
-        Cursor cursor = db.rawQuery(
-                "SELECT COUNT(*) FROM ecdict "
-                        + "WHERE word NOT IN ("
-                        + "SELECT word FROM study_record WHERE user_id = ?"
-                        + ")",
-                new String[]{
-                        String.valueOf(currentUserId)
-                }
-        );
-
-        int count = 0;
-
-        if (cursor.moveToFirst()) {
-            count = cursor.getInt(0);
-        }
-
-        cursor.close();
-
-        return count;
+        return StudyTaskHelper.countAvailableNewWords(db, currentUserId, currentBookTags);
     }
 }

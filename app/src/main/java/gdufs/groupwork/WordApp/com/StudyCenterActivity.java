@@ -1,53 +1,44 @@
 package gdufs.groupwork.WordApp.com;
 
-import android.content.ContentValues;
 import android.content.Intent;
-import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
-import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.button.MaterialButton;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * 学习中心页面。
- *
- * 保留原有功能：
- * 1. 继续背词
- * 2. 快速开始 20 词
- * 3. 自定义生成词书
- *
- * 新增功能：
- * 4. 删除尚未真正学习过的新词
+ * 学习中心页面：今日学习任务、学习新词、复习旧词、设置四个模块。
  */
 public class StudyCenterActivity extends AppCompatActivity {
 
-    // 顶部学习任务提示
-    private TextView tvPendingSummary;
+    private TextView tvStartTodayDescription;
+    private TextView tvReviewProgressLabel;
+    private TextView tvNewProgressLabel;
+    private ProgressBar progressTodayReview;
+    private ProgressBar progressTodayNew;
+    private TextView tvLearnNewDescription;
+    private TextView tvReviewOldDescription;
+    private TextView tvSettingsDescription;
 
-    // “继续背词”下方的统计说明
-    private TextView tvContinueDescription;
-
-    // 功能按钮
-    private MaterialButton btnContinueStudy;
-    private MaterialButton btnQuickStart;
-    private MaterialButton btnCustomBook;
-
-    // 新增：删除新词按钮
-    private MaterialButton btnClearNewWords;
+    private MaterialButton btnStartToday;
+    private MaterialButton btnLearnNew;
+    private MaterialButton btnReviewOld;
 
     private DatabaseHelper dbHelper;
     private UserSessionManager sessionManager;
+    private StudyPlanManager planManager;
+    private VocabBookManager vocabBookManager;
 
     private int currentUserId;
-
-    // 快速开始时默认生成的新词数量
-    private static final int QUICK_START_COUNT = 20;
+    private List<String> currentBookTags = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,21 +47,11 @@ public class StudyCenterActivity extends AppCompatActivity {
 
         dbHelper = new DatabaseHelper(this);
         sessionManager = new UserSessionManager(this);
+        planManager = new StudyPlanManager(this);
+        vocabBookManager = new VocabBookManager(this);
 
-        // 未登录时直接返回登录页
         if (!sessionManager.isLoggedIn()) {
-            Intent intent = new Intent(
-                    StudyCenterActivity.this,
-                    LoginActivity.class
-            );
-
-            intent.setFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK
-                            | Intent.FLAG_ACTIVITY_CLEAR_TASK
-            );
-
-            startActivity(intent);
-            finish();
+            goToLogin();
             return;
         }
 
@@ -84,447 +65,241 @@ public class StudyCenterActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
-        // 从背词页、生成词书页返回时，重新刷新数量
-        if (dbHelper != null
-                && sessionManager != null
-                && sessionManager.isLoggedIn()) {
+        if (dbHelper != null && sessionManager != null && sessionManager.isLoggedIn()) {
             refreshLearningInfo();
         }
     }
 
+    /**
+     * 绑定四个功能模块的控件与点击事件。
+     */
     private void initViews() {
-        tvPendingSummary = findViewById(R.id.tvPendingSummary);
-        tvContinueDescription = findViewById(R.id.tvContinueDescription);
+        tvStartTodayDescription = findViewById(R.id.tvStartTodayDescription);
+        tvReviewProgressLabel = findViewById(R.id.tvReviewProgressLabel);
+        tvNewProgressLabel = findViewById(R.id.tvNewProgressLabel);
+        progressTodayReview = findViewById(R.id.progressTodayReview);
+        progressTodayNew = findViewById(R.id.progressTodayNew);
+        tvLearnNewDescription = findViewById(R.id.tvLearnNewDescription);
+        tvReviewOldDescription = findViewById(R.id.tvReviewOldDescription);
+        tvSettingsDescription = findViewById(R.id.tvSettingsDescription);
 
-        btnContinueStudy = findViewById(R.id.btnContinueStudy);
-        btnQuickStart = findViewById(R.id.btnQuickStart);
-        btnCustomBook = findViewById(R.id.btnCustomBook);
+        btnStartToday = findViewById(R.id.btnStartToday);
+        btnLearnNew = findViewById(R.id.btnLearnNew);
+        btnReviewOld = findViewById(R.id.btnReviewOld);
 
-        // 新增按钮
-        btnClearNewWords = findViewById(R.id.btnClearNewWords);
-
-        // 返回首页
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
 
-        // 继续背词
-        btnContinueStudy.setOnClickListener(v -> startContinueStudy());
+        btnStartToday.setOnClickListener(v -> startTodayTask());
+        btnLearnNew.setOnClickListener(v -> startLearnNewWords());
+        btnReviewOld.setOnClickListener(v -> startReviewOldWords());
 
-        // 快速开始 20 词
-        btnQuickStart.setOnClickListener(v -> quickStartTwentyWords());
-
-        // 自定义生成词书
-        btnCustomBook.setOnClickListener(v -> {
-            Intent intent = new Intent(
-                    StudyCenterActivity.this,
-                    GenerateBookActivity.class
-            );
+        findViewById(R.id.btnSettings).setOnClickListener(v -> {
+            Intent intent = new Intent(StudyCenterActivity.this, StudySettingsActivity.class);
             startActivity(intent);
         });
-
-        // 新增：删除新词
-        btnClearNewWords.setOnClickListener(v -> confirmClearNewWords());
     }
 
     /**
-     * 刷新学习中心中的数字、提示文本、按钮状态。
+     * 刷新今日进度与各模块说明文字。
      */
     private void refreshLearningInfo() {
-        int dueCount = getDueStudyCount();
-        int dueNewWordCount = getDueNewWordCount();
-        int dueReviewCount = dueCount - dueNewWordCount;
-        int removableNewWordCount = getRemovableNewWordCount();
-        int availableNewWordCount = getAvailableNewWordCount();
+        planManager.ensureToday(currentUserId);
+        currentBookTags = vocabBookManager.getCurrentBook(currentUserId).tags;
 
-        // 顶部学习摘要
-        if (dueCount > 0) {
-            tvPendingSummary.setText(
-                    "今天有 " + dueCount + " 个单词等待你学习"
-            );
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        long now = System.currentTimeMillis();
+
+        int dailyNew = planManager.getDailyNewWordCount(currentUserId);
+        int dailyReview = planManager.getDailyReviewLimit(currentUserId);
+        int todayNewDone = planManager.getTodayNewCompleted(currentUserId);
+        int todayReviewDone = planManager.getTodayReviewCompleted(currentUserId);
+        int remainingNew = planManager.getRemainingNewQuota(currentUserId);
+        int remainingReview = planManager.getRemainingReviewQuota(currentUserId);
+
+        int dueReviewCount = StudyTaskHelper.countDueReviewWords(db, currentUserId, now);
+        int unfamiliarCount = StudyTaskHelper.countUnfamiliarWords(db, currentUserId);
+        int availableNewCount = StudyTaskHelper.countAvailableNewWords(
+                db, currentUserId, currentBookTags
+        );
+        int learnedCount = StudyTaskHelper.countLearnedWords(db, currentUserId);
+
+        if (planManager.isTodayTaskComplete(currentUserId)) {
+            tvStartTodayDescription.setText("今日学习任务已全部完成，可以继续自由学习");
         } else {
-            tvPendingSummary.setText(
-                    "当前没有到期复习任务，可以学习新词"
+            tvStartTodayDescription.setText(
+                    "先复习到期旧词（最多 " + remainingReview + " 个），"
+                            + "再学习新词（最多 " + remainingNew + " 个）"
             );
         }
 
-        // 继续背词按钮
-        btnContinueStudy.setText(
-                "继续背词（" + dueCount + " 个待学）"
+        updateTodayProgressBars(
+                todayReviewDone,
+                dailyReview,
+                todayNewDone,
+                dailyNew
         );
 
-        if (dueCount > 0) {
-            btnContinueStudy.setEnabled(true);
-            btnContinueStudy.setAlpha(1f);
+        tvLearnNewDescription.setText(
+                "随机抽取陌生单词卡片记忆 · 计划中陌生词 "
+                        + unfamiliarCount + " 个 · 词库可学 "
+                        + availableNewCount + " 个 · 无上限"
+        );
 
-            tvContinueDescription.setText(
-                    "其中新词 " + dueNewWordCount
-                            + " 个 · 到期复习 "
-                            + dueReviewCount + " 个"
-            );
+        tvReviewOldDescription.setText(
+                "看英选中随机复习 · 已学单词 "
+                        + learnedCount + " 个 · 无上限 · 答对不重复"
+        );
+
+        tvSettingsDescription.setText(
+                "每日新词 " + dailyNew + " 个 · 复习上限 " + dailyReview + " 个"
+        );
+
+        boolean todayAvailable = !planManager.isTodayTaskComplete(currentUserId)
+                && (remainingReview > 0 || remainingNew > 0);
+
+        btnStartToday.setEnabled(todayAvailable);
+        btnStartToday.setAlpha(todayAvailable ? 1f : 0.55f);
+
+        if (planManager.isTodayTaskComplete(currentUserId)) {
+            btnStartToday.setText("今日任务已完成");
+        } else if (remainingReview <= 0 && remainingNew > 0) {
+            btnStartToday.setText("今日学习任务（仅新词 " + remainingNew + " 个）");
+        } else if (remainingReview > 0 && remainingNew <= 0) {
+            btnStartToday.setText("今日学习任务（仅复习 " + Math.min(remainingReview, dueReviewCount) + " 个）");
         } else {
-            btnContinueStudy.setEnabled(false);
-            btnContinueStudy.setAlpha(0.55f);
-
-            tvContinueDescription.setText(
-                    "当前没有待背或待复习单词"
-            );
+            btnStartToday.setText("今日学习任务");
         }
 
-        /*
-         * 新增：
-         * 只要存在尚未学习的新词，就显示删除按钮。
-         *
-         * 例如：
-         * 删除新词（40）
-         */
-        if (removableNewWordCount > 0) {
-            btnClearNewWords.setVisibility(View.VISIBLE);
-            btnClearNewWords.setText(
-                    "删除新词（" + removableNewWordCount + "）"
-            );
-        } else {
-            btnClearNewWords.setVisibility(View.GONE);
-        }
+        boolean canLearnNew = unfamiliarCount > 0 || availableNewCount > 0;
+        btnLearnNew.setEnabled(canLearnNew);
+        btnLearnNew.setAlpha(canLearnNew ? 1f : 0.55f);
 
-        // 保留原有快速开始按钮状态
-        boolean quickStartAvailable = availableNewWordCount > 0;
-
-        btnQuickStart.setEnabled(quickStartAvailable);
-        btnQuickStart.setAlpha(
-                quickStartAvailable ? 1f : 0.55f
-        );
+        boolean canReviewOld = learnedCount > 0;
+        btnReviewOld.setEnabled(canReviewOld);
+        btnReviewOld.setAlpha(canReviewOld ? 1f : 0.55f);
     }
 
     /**
-     * 获取当前到期的待学习 / 待复习单词数量。
+     * 更新「今日学习任务」模块中的复习 / 新词进度条。
      */
-    private int getDueStudyCount() {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
+    private void updateTodayProgressBars(
+            int reviewDone,
+            int reviewTotal,
+            int newDone,
+            int newTotal
+    ) {
+        progressTodayReview.setMax(Math.max(1, reviewTotal));
+        progressTodayReview.setProgress(Math.min(reviewDone, reviewTotal));
+        tvReviewProgressLabel.setText("复习进度 " + reviewDone + "/" + reviewTotal);
 
-        Cursor cursor = db.rawQuery(
-                "SELECT COUNT(*) FROM study_record "
-                        + "WHERE user_id = ? "
-                        + "AND is_ignored = 0 "
-                        + "AND next_review_time <= ?",
-                new String[]{
-                        String.valueOf(currentUserId),
-                        String.valueOf(System.currentTimeMillis())
-                }
-        );
-
-        int count = 0;
-
-        if (cursor.moveToFirst()) {
-            count = cursor.getInt(0);
-        }
-
-        cursor.close();
-
-        return count;
+        progressTodayNew.setMax(Math.max(1, newTotal));
+        progressTodayNew.setProgress(Math.min(newDone, newTotal));
+        tvNewProgressLabel.setText("新词进度 " + newDone + "/" + newTotal);
     }
 
     /**
-     * 获取到期单词中的“新词”数量。
-     *
-     * 新词条件：
-     * master_level = 0
-     * error_count = 0
-     *
-     * 这样答错后重新复习的词，不会被当成新词。
+     * 开始今日学习任务：先复习旧词，后学习新词。
      */
-    private int getDueNewWordCount() {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
+    private void startTodayTask() {
+        planManager.ensureToday(currentUserId);
 
-        Cursor cursor = db.rawQuery(
-                "SELECT COUNT(*) FROM study_record "
-                        + "WHERE user_id = ? "
-                        + "AND is_ignored = 0 "
-                        + "AND master_level = 0 "
-                        + "AND error_count = 0 "
-                        + "AND next_review_time <= ?",
-                new String[]{
-                        String.valueOf(currentUserId),
-                        String.valueOf(System.currentTimeMillis())
-                }
-        );
-
-        int count = 0;
-
-        if (cursor.moveToFirst()) {
-            count = cursor.getInt(0);
-        }
-
-        cursor.close();
-
-        return count;
-    }
-
-    /**
-     * 获取“可删除的新词”数量。
-     *
-     * 不限制 next_review_time，
-     * 因为用户刚生成新词但还没开始背时，也应该能删除。
-     */
-    private int getRemovableNewWordCount() {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-
-        Cursor cursor = db.rawQuery(
-                "SELECT COUNT(*) FROM study_record "
-                        + "WHERE user_id = ? "
-                        + "AND is_ignored = 0 "
-                        + "AND master_level = 0 "
-                        + "AND error_count = 0",
-                new String[]{
-                        String.valueOf(currentUserId)
-                }
-        );
-
-        int count = 0;
-
-        if (cursor.moveToFirst()) {
-            count = cursor.getInt(0);
-        }
-
-        cursor.close();
-
-        return count;
-    }
-
-    /**
-     * 获取还未加入当前用户学习计划的新词数量。
-     */
-    private int getAvailableNewWordCount() {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-
-        Cursor cursor = db.rawQuery(
-                "SELECT COUNT(*) FROM ecdict "
-                        + "WHERE word NOT IN ("
-                        + "SELECT word FROM study_record WHERE user_id = ?"
-                        + ")",
-                new String[]{
-                        String.valueOf(currentUserId)
-                }
-        );
-
-        int count = 0;
-
-        if (cursor.moveToFirst()) {
-            count = cursor.getInt(0);
-        }
-
-        cursor.close();
-
-        return count;
-    }
-
-    /**
-     * 保留原有逻辑：
-     * 点击后进入当前待背/待复习队列。
-     */
-    private void startContinueStudy() {
-        int dueCount = getDueStudyCount();
-
-        if (dueCount <= 0) {
-            Toast.makeText(
-                    this,
-                    "当前没有待背或待复习单词",
-                    Toast.LENGTH_SHORT
-            ).show();
-
+        if (planManager.isTodayTaskComplete(currentUserId)) {
+            Toast.makeText(this, "今日学习任务已全部完成", Toast.LENGTH_SHORT).show();
             refreshLearningInfo();
             return;
         }
 
-        Intent intent = new Intent(
-                StudyCenterActivity.this,
-                StudyActivity.class
-        );
+        int remainingReview = planManager.getRemainingReviewQuota(currentUserId);
+        int remainingNew = planManager.getRemainingNewQuota(currentUserId);
 
-        startActivity(intent);
-    }
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        long now = System.currentTimeMillis();
+        int dueReview = StudyTaskHelper.countDueReviewWords(db, currentUserId, now);
 
-    /**
-     * 保留原有逻辑：
-     * 快速开始时，如果当前有待背词则优先进入学习队列；
-     * 没有待背词时才随机生成 20 个新词。
-     */
-    private void quickStartTwentyWords() {
-        int dueCount = getDueStudyCount();
-
-        // 有待背/待复习词时，优先进入当前队列
-        if (dueCount > 0) {
-            Toast.makeText(
-                    this,
-                    "当前有 " + dueCount + " 个待学单词，已优先进入学习队列",
-                    Toast.LENGTH_SHORT
-            ).show();
-
-            startContinueStudy();
-            return;
-        }
-
-        int insertCount = generateQuickWords(QUICK_START_COUNT);
-
-        if (insertCount <= 0) {
-            Toast.makeText(
-                    this,
-                    "当前没有可生成的新词",
-                    Toast.LENGTH_LONG
-            ).show();
-
+        if (remainingReview <= 0 && remainingNew <= 0) {
+            Toast.makeText(this, "今日学习任务已全部完成", Toast.LENGTH_SHORT).show();
             refreshLearningInfo();
             return;
         }
 
-        Toast.makeText(
-                this,
-                "已生成 " + insertCount + " 个新词，开始学习",
-                Toast.LENGTH_SHORT
-        ).show();
+        if (remainingReview <= 0 && remainingNew > 0) {
+            int generated = ensureNewWordsForToday(db, remainingNew);
+            if (generated <= 0 && StudyTaskHelper.countUnfamiliarWords(db, currentUserId) <= 0) {
+                Toast.makeText(this, "词库中没有可学习的新词", Toast.LENGTH_LONG).show();
+                refreshLearningInfo();
+                return;
+            }
+        } else if (remainingReview > 0 && dueReview <= 0 && remainingNew <= 0) {
+            Toast.makeText(this, "当前没有到期复习词，今日复习任务已完成", Toast.LENGTH_SHORT).show();
+            refreshLearningInfo();
+            return;
+        } else if (remainingReview > 0 && dueReview <= 0 && remainingNew > 0) {
+            ensureNewWordsForToday(db, remainingNew);
+        }
 
-        Intent intent = new Intent(
-                StudyCenterActivity.this,
-                StudyActivity.class
-        );
-
+        Intent intent = new Intent(this, StudyActivity.class);
+        intent.putExtra(StudyActivity.EXTRA_STUDY_MODE, StudyActivity.MODE_TODAY);
         startActivity(intent);
     }
 
     /**
-     * 保留原有逻辑：
-     * 从词库随机生成指定数量的新词。
+     * 学习新词：无每日上限，随机抽取陌生单词。
      */
-    private int generateQuickWords(int targetCount) {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
+    private void startLearnNewWords() {
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        int unfamiliar = StudyTaskHelper.countUnfamiliarWords(db, currentUserId);
+        int available = StudyTaskHelper.countAvailableNewWords(db, currentUserId, currentBookTags);
 
-        int availableCount = getAvailableNewWordCount();
+        if (unfamiliar <= 0 && available <= 0) {
+            Toast.makeText(this, "没有可学习的陌生单词", Toast.LENGTH_LONG).show();
+            refreshLearningInfo();
+            return;
+        }
 
-        if (availableCount <= 0) {
+        if (unfamiliar <= 0) {
+            StudyTaskHelper.generateNewWords(db, currentUserId, 1, currentBookTags);
+        }
+
+        Intent intent = new Intent(this, StudyActivity.class);
+        intent.putExtra(StudyActivity.EXTRA_STUDY_MODE, StudyActivity.MODE_NEW_WORDS);
+        startActivity(intent);
+    }
+
+    /**
+     * 复习旧词：进入独立复习页，看英选中，不增加熟练度。
+     */
+    private void startReviewOldWords() {
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+
+        if (StudyTaskHelper.countLearnedWords(db, currentUserId) <= 0) {
+            Toast.makeText(this, "还没有已学单词，请先学习新词", Toast.LENGTH_LONG).show();
+            refreshLearningInfo();
+            return;
+        }
+
+        Intent intent = new Intent(this, ReviewOldActivity.class);
+        startActivity(intent);
+    }
+
+    /**
+     * 为今日新词任务预生成不足的新词。
+     */
+    private int ensureNewWordsForToday(SQLiteDatabase db, int needed) {
+        int unfamiliar = StudyTaskHelper.countUnfamiliarWords(db, currentUserId);
+
+        if (unfamiliar >= needed) {
             return 0;
         }
 
-        int actualCount = Math.min(targetCount, availableCount);
-
-        Cursor cursor = db.rawQuery(
-                "SELECT word FROM ecdict "
-                        + "WHERE word NOT IN ("
-                        + "SELECT word FROM study_record WHERE user_id = ?"
-                        + ") "
-                        + "ORDER BY RANDOM() LIMIT ?",
-                new String[]{
-                        String.valueOf(currentUserId),
-                        String.valueOf(actualCount)
-                }
+        return StudyTaskHelper.generateNewWords(
+                db, currentUserId, needed - unfamiliar, currentBookTags
         );
-
-        int insertCount = 0;
-        long now = System.currentTimeMillis();
-
-        db.beginTransaction();
-
-        try {
-            while (cursor.moveToNext()) {
-                String word = cursor.getString(0);
-
-                ContentValues values = new ContentValues();
-                values.put("user_id", currentUserId);
-                values.put("word", word);
-                values.put("master_level", 0);
-                values.put("next_review_time", now);
-                values.put("error_count", 0);
-                values.put("is_ignored", 0);
-
-                long result = db.insertWithOnConflict(
-                        "study_record",
-                        null,
-                        values,
-                        SQLiteDatabase.CONFLICT_IGNORE
-                );
-
-                if (result != -1) {
-                    insertCount++;
-                }
-            }
-
-            db.setTransactionSuccessful();
-        } finally {
-            db.endTransaction();
-            cursor.close();
-        }
-
-        return insertCount;
     }
 
-    /**
-     * 删除前二次确认。
-     */
-    private void confirmClearNewWords() {
-        int newWordCount = getRemovableNewWordCount();
-
-        if (newWordCount <= 0) {
-            Toast.makeText(
-                    this,
-                    "当前没有可删除的新词",
-                    Toast.LENGTH_SHORT
-            ).show();
-
-            refreshLearningInfo();
-            return;
-        }
-
-        new AlertDialog.Builder(this)
-                .setTitle("删除新词")
-                .setMessage(
-                        "确定要删除 " + newWordCount
-                                + " 个尚未学习的新词吗？\n\n"
-                                + "已学习、答错待复习、已掌握的单词不会受影响。"
-                )
-                .setNegativeButton("取消", null)
-                .setPositiveButton("确认删除", (dialog, which) ->
-                        clearNewWords()
-                )
-                .show();
-    }
-
-    /**
-     * 将尚未学习的新词标记为忽略。
-     *
-     * 不直接物理删除记录，而是设置 is_ignored = 1：
-     * 1. 它们不再出现在继续背词列表；
-     * 2. 不影响复习词、已掌握词；
-     * 3. 后续随机生成时也不会重复抽到。
-     */
-    private void clearNewWords() {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-
-        ContentValues values = new ContentValues();
-        values.put("is_ignored", 1);
-
-        int changedRows = db.update(
-                "study_record",
-                values,
-                "user_id = ? "
-                        + "AND is_ignored = 0 "
-                        + "AND master_level = 0 "
-                        + "AND error_count = 0",
-                new String[]{
-                        String.valueOf(currentUserId)
-                }
-        );
-
-        if (changedRows > 0) {
-            Toast.makeText(
-                    this,
-                    "已删除 " + changedRows + " 个新词",
-                    Toast.LENGTH_SHORT
-            ).show();
-        } else {
-            Toast.makeText(
-                    this,
-                    "没有可删除的新词",
-                    Toast.LENGTH_SHORT
-            ).show();
-        }
-
-        refreshLearningInfo();
+    private void goToLogin() {
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 }

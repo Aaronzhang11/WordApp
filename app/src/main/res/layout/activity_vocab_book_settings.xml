@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 词书设置页：展示已有词书、切换当前词书、添加自定义词书 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F6F8FC"
+    android:orientation="vertical"
+    android:paddingLeft="16dp"
+    android:paddingTop="18dp"
+    android:paddingRight="16dp"
+    android:paddingBottom="16dp">
+
+    <!-- 顶部栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnBack"
+            android:layout_width="72dp"
+            android:layout_height="46dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:text="返回"
+            android:textAllCaps="false"
+            android:textColor="#2C5282"
+            android:textSize="15sp"
+            app:backgroundTint="#FFFFFF"
+            app:cornerRadius="14dp"
+            app:strokeColor="#D8E2F0"
+            app:strokeWidth="1dp" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="词书设置"
+                android:textColor="#1F3B5B"
+                android:textSize="23sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="选择学习词书，最多 5 本（含默认全词库）"
+                android:textColor="#718096"
+                android:textSize="13sp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- 说明卡片 -->
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        app:cardBackgroundColor="#EAF2FC"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        app:strokeColor="#C8DCF3"
+        app:strokeWidth="1dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:lineSpacingExtra="3dp"
+            android:padding="16dp"
+            android:text="默认词书为 ECDICT 全词库。自定义词书可按标签（四级、六级、考研等）筛选 ECDICT 词条。点击词书切换当前学习范围，长按自定义词书可删除。"
+            android:textColor="#4A6682"
+            android:textSize="14sp" />
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <TextView
+        android:id="@+id/tvBookCountHint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="已有 1 / 5 本词书"
+        android:textColor="#718096"
+        android:textSize="13sp" />
+
+    <!-- 词书列表 -->
+    <ListView
+        android:id="@+id/lvVocabBooks"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="8dp"
+        android:paddingBottom="8dp"
+        android:scrollbars="vertical" />
+
+    <TextView
+        android:id="@+id/tvEmptyBooks"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="暂无词书"
+        android:textColor="#718096"
+        android:textSize="15sp"
+        android:visibility="gone" />
+
+    <!-- 添加词书 -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAddVocabBook"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:text="添加自定义词书"
+        android:textAllCaps="false"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        app:backgroundTint="#2C5282"
+        app:cornerRadius="14dp" />
+
+</LinearLayout>

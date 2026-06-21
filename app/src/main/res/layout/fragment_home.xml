@@ -1,0 +1,395 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 首页 Fragment：顶部标题、学习进度、学习情况统计、开始学习 -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F7FAFC"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingLeft="16dp"
+        android:paddingTop="22dp"
+        android:paddingRight="16dp"
+        android:paddingBottom="20dp">
+
+        <!-- 顶部标题与右上角头像 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="单词记忆系统"
+                android:textColor="#2C5282"
+                android:textSize="26sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnProfileAvatar"
+                android:layout_width="54dp"
+                android:layout_height="54dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:text="用户"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                app:backgroundTint="#2C5282"
+                app:cornerRadius="27dp"
+                app:strokeColor="#B9CCE5"
+                app:strokeWidth="1dp" />
+
+        </LinearLayout>
+
+        <!-- 词书模块（紧凑布局） -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp"
+            app:strokeColor="#E5EBF3"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingLeft="14dp"
+                android:paddingTop="12dp"
+                android:paddingRight="14dp"
+                android:paddingBottom="12dp">
+
+                <!-- 第一行：词书名称 + 设置按钮 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="当前词书"
+                            android:textColor="#718096"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/tvCurrentBookName"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="ECDICT全词库"
+                            android:textColor="#2C5282"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnVocabBookSettings"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:layout_marginStart="12dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minHeight="0dp"
+                        android:minWidth="0dp"
+                        android:paddingLeft="12dp"
+                        android:paddingRight="12dp"
+                        android:text="词书设置"
+                        android:textAllCaps="false"
+                        android:textColor="#2C5282"
+                        android:textSize="13sp"
+                        app:backgroundTint="#E6EEF8"
+                        app:cornerRadius="8dp"
+                        app:strokeColor="#B7CAE2"
+                        app:strokeWidth="1dp" />
+
+                </LinearLayout>
+
+                <!-- 第二行：词数 + 学习进度（均分宽度） -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="词数"
+                            android:textColor="#718096"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/tvBookWordCount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="0"
+                            android:textColor="#2D3748"
+                            android:textSize="17sp"
+                            android:textStyle="bold" />
+
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginTop="2dp"
+                        android:layout_marginBottom="2dp"
+                        android:background="#E2E8F0" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:paddingStart="14dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="学习进度"
+                            android:textColor="#718096"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/tvBookProgress"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:text="0 / 0"
+                            android:textColor="#319795"
+                            android:textSize="17sp"
+                            android:textStyle="bold" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <ProgressBar
+                    android:id="@+id/progressBookLearned"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="6dp"
+                    android:layout_marginTop="10dp"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressBackgroundTint="#E2E8F0"
+                    android:progressTint="#319795" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 今日学习进度 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="今日学习进度"
+                android:textColor="#2D3748"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvTodayTaskStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="#E6FFFA"
+                android:paddingLeft="10dp"
+                android:paddingTop="4dp"
+                android:paddingRight="10dp"
+                android:paddingBottom="4dp"
+                android:text="进行中"
+                android:textColor="#319795"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp"
+            app:strokeColor="#E5EBF3"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingLeft="14dp"
+                android:paddingTop="16dp"
+                android:paddingRight="14dp"
+                android:paddingBottom="16dp">
+
+                <!-- 复习进度 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="28dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="40dp"
+                        android:layout_height="wrap_content"
+                        android:text="复习"
+                        android:textColor="#718096"
+                        android:textSize="14sp" />
+
+                    <ProgressBar
+                        android:id="@+id/progressTodayReview"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="0dp"
+                        android:layout_height="8dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:max="50"
+                        android:progress="0"
+                        android:progressBackgroundTint="#E2E8F0"
+                        android:progressTint="#2C5282" />
+
+                    <TextView
+                        android:id="@+id/tvTodayReviewProgress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="48dp"
+                        android:gravity="end"
+                        android:text="0/50"
+                        android:textColor="#2C5282"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <!-- 新词进度 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:gravity="center_vertical"
+                    android:minHeight="28dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="40dp"
+                        android:layout_height="wrap_content"
+                        android:text="新词"
+                        android:textColor="#718096"
+                        android:textSize="14sp" />
+
+                    <ProgressBar
+                        android:id="@+id/progressTodayNew"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="0dp"
+                        android:layout_height="8dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:max="20"
+                        android:progress="0"
+                        android:progressBackgroundTint="#E2E8F0"
+                        android:progressTint="#805AD5" />
+
+                    <TextView
+                        android:id="@+id/tvTodayNewProgress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="48dp"
+                        android:gravity="end"
+                        android:text="0/20"
+                        android:textColor="#805AD5"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="14dp"
+                    android:background="#EDF2F7" />
+
+                <!-- 待办提示 -->
+                <TextView
+                    android:id="@+id/tvTodayDueHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="到期待复习 0 词 · 剩余新词配额 0"
+                    android:textColor="#718096"
+                    android:textSize="13sp" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <include
+            layout="@layout/include_dashboard_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" />
+
+        <!-- 开始学习入口 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnStudy"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:layout_marginTop="20dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:text="开始学习"
+            android:textAllCaps="false"
+            android:textColor="@android:color/white"
+            android:textSize="17sp"
+            app:backgroundTint="#2C5282"
+            app:cornerRadius="8dp"
+            app:icon="@android:drawable/ic_media_play"
+            app:iconGravity="textStart"
+            app:iconTint="@android:color/white" />
+
+    </LinearLayout>
+
+</ScrollView>

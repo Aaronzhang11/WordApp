@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F4F8FB"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingLeft="18dp"
+        android:paddingTop="18dp"
+        android:paddingRight="18dp"
+        android:paddingBottom="24dp">
+
+        <!-- 顶部标题与退出 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="复习旧词"
+                android:textColor="#1F4E86"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnExitReview"
+                android:layout_width="108dp"
+                android:layout_height="40dp"
+                android:backgroundTint="#D9534F"
+                android:text="退出复习"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+        <!-- 本轮复习统计（无进度条） -->
+        <TextView
+            android:id="@+id/tvSessionStats"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="本轮已答对 0 题"
+            android:textColor="#319795"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tvQuestionTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="12dp"
+            android:text="请根据英文单词选择正确的中文释义："
+            android:textColor="#6F7F8F"
+            android:textSize="16sp" />
+
+        <!-- 英文题干 -->
+        <TextView
+            android:id="@+id/tvQuestionContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="120dp"
+            android:background="#FFFFFF"
+            android:elevation="3dp"
+            android:gravity="center"
+            android:lineSpacingExtra="4dp"
+            android:padding="18dp"
+            android:textColor="#1D2A3A"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <!-- 四个选项 -->
+        <LinearLayout
+            android:id="@+id/layoutOptions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/btnOptionA"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginBottom="14dp"
+                android:backgroundTint="#FFFFFF"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="2"
+                android:text="选项 A"
+                android:textAllCaps="false"
+                android:textColor="#1F4E86"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnOptionB"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginBottom="14dp"
+                android:backgroundTint="#FFFFFF"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="2"
+                android:text="选项 B"
+                android:textAllCaps="false"
+                android:textColor="#1F4E86"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnOptionC"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginBottom="14dp"
+                android:backgroundTint="#FFFFFF"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="2"
+                android:text="选项 C"
+                android:textAllCaps="false"
+                android:textColor="#1F4E86"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnOptionD"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginBottom="14dp"
+                android:backgroundTint="#FFFFFF"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="2"
+                android:text="选项 D"
+                android:textAllCaps="false"
+                android:textColor="#1F4E86"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

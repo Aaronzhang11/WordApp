@@ -64,50 +64,11 @@
 
         </LinearLayout>
 
-        <!-- 今日学习摘要 -->
+        <!-- 今日学习任务 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="22dp"
-            app:cardBackgroundColor="#EAF2FC"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="0dp"
-            app:strokeColor="#C8DCF3"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="18dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="今日学习任务"
-                    android:textColor="#2C5282"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tvPendingSummary"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="当前没有到期复习任务，可以学习新词"
-                    android:textColor="#365B81"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- 继续背词 -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
             app:cardBackgroundColor="#FFFFFF"
             app:cardCornerRadius="20dp"
             app:cardElevation="2dp"
@@ -120,61 +81,76 @@
                 android:orientation="vertical"
                 android:padding="20dp">
 
-                <!-- 标题 + 删除新词按钮 -->
-                <LinearLayout
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="继续背词"
-                        android:textColor="#1F2937"
-                        android:textSize="21sp"
-                        android:textStyle="bold" />
-
-                    <!-- 有可删除新词时才显示 -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnClearNewWords"
-                        android:layout_width="wrap_content"
-                        android:layout_height="38dp"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:minHeight="0dp"
-                        android:minWidth="0dp"
-                        android:text="删除新词"
-                        android:textAllCaps="false"
-                        android:textColor="#D9534F"
-                        android:textSize="12sp"
-                        android:visibility="gone"
-                        app:backgroundTint="#FFF7F7"
-                        app:cornerRadius="12dp"
-                        app:strokeColor="#E98B8B"
-                        app:strokeWidth="1dp" />
-
-                </LinearLayout>
+                    android:text="今日学习任务"
+                    android:textColor="#1F2937"
+                    android:textSize="21sp"
+                    android:textStyle="bold" />
 
                 <TextView
-                    android:id="@+id/tvContinueDescription"
+                    android:id="@+id/tvStartTodayDescription"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:lineSpacingExtra="4dp"
-                    android:text="当前没有待背或待复习单词"
+                    android:text="按设置完成今日复习与新词任务"
                     android:textColor="#718096"
                     android:textSize="14sp" />
 
+                <!-- 今日复习进度 -->
+                <TextView
+                    android:id="@+id/tvReviewProgressLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="复习进度 0/50"
+                    android:textColor="#2C5282"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <ProgressBar
+                    android:id="@+id/progressTodayReview"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
+                    android:layout_marginTop="6dp"
+                    android:max="50"
+                    android:progress="0"
+                    android:progressBackgroundTint="#E2E8F0"
+                    android:progressTint="#2C5282" />
+
+                <!-- 今日新词进度 -->
+                <TextView
+                    android:id="@+id/tvNewProgressLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="新词进度 0/20"
+                    android:textColor="#319795"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <ProgressBar
+                    android:id="@+id/progressTodayNew"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
+                    android:layout_marginTop="6dp"
+                    android:max="20"
+                    android:progress="0"
+                    android:progressBackgroundTint="#E2E8F0"
+                    android:progressTint="#319795" />
+
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnContinueStudy"
+                    android:id="@+id/btnStartToday"
                     android:layout_width="match_parent"
                     android:layout_height="52dp"
                     android:layout_marginTop="20dp"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
-                    android:text="继续背词（0 个待学）"
+                    android:text="今日学习任务"
                     android:textAllCaps="false"
                     android:textColor="@android:color/white"
                     android:textSize="16sp"
@@ -185,7 +161,7 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 快速开始 -->
+        <!-- 学习新词 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -205,19 +181,29 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="快速开始 20 词"
+                    android:text="学习新词"
                     android:textColor="#1F2937"
                     android:textSize="21sp"
                     android:textStyle="bold" />
 
+                <TextView
+                    android:id="@+id/tvLearnNewDescription"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="随机抽取陌生单词进行卡片记忆，无每日上限"
+                    android:textColor="#718096"
+                    android:textSize="14sp" />
+
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnQuickStart"
+                    android:id="@+id/btnLearnNew"
                     android:layout_width="match_parent"
                     android:layout_height="52dp"
                     android:layout_marginTop="20dp"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
-                    android:text="快速开始 20 词"
+                    android:text="学习新词"
                     android:textAllCaps="false"
                     android:textColor="@android:color/white"
                     android:textSize="16sp"
@@ -228,7 +214,60 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 自定义生成词书 -->
+        <!-- 复习旧词 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="2dp"
+            app:strokeColor="#D9E5F2"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="复习旧词"
+                    android:textColor="#1F2937"
+                    android:textSize="21sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvReviewOldDescription"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="看英选中随机复习，无上限，答对不重复"
+                    android:textColor="#718096"
+                    android:textSize="14sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnReviewOld"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="20dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:text="复习旧词"
+                    android:textAllCaps="false"
+                    android:textColor="@android:color/white"
+                    android:textSize="16sp"
+                    app:backgroundTint="#805AD5"
+                    app:cornerRadius="14dp" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 设置 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -248,28 +287,29 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="自定义生成词书"
+                    android:text="设置"
                     android:textColor="#1F2937"
                     android:textSize="21sp"
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/tvSettingsDescription"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="9dp"
+                    android:layout_marginTop="10dp"
                     android:lineSpacingExtra="4dp"
-                    android:text="自行输入今天想学习的新词数量，例如 10、20 或 50 个。"
+                    android:text="每日新词 20 个 · 复习上限 50 个"
                     android:textColor="#718096"
                     android:textSize="14sp" />
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnCustomBook"
+                    android:id="@+id/btnSettings"
                     android:layout_width="match_parent"
                     android:layout_height="52dp"
                     android:layout_marginTop="20dp"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
-                    android:text="自定义生成词书"
+                    android:text="学习设置"
                     android:textAllCaps="false"
                     android:textColor="#2C5282"
                     android:textSize="16sp"

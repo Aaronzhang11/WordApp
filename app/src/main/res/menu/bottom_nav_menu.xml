@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 底部导航栏四个模块 -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@android:drawable/ic_menu_compass"
+        android:title="首页" />
+
+    <item
+        android:id="@+id/nav_test"
+        android:icon="@android:drawable/ic_menu_edit"
+        android:title="模拟测试" />
+
+    <item
+        android:id="@+id/nav_search"
+        android:icon="@android:drawable/ic_menu_search"
+        android:title="词典" />
+
+    <item
+        android:id="@+id/nav_wordbook"
+        android:icon="@android:drawable/ic_input_get"
+        android:title="单词本" />
+
+</menu>
