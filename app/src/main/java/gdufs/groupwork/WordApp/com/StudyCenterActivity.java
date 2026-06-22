@@ -123,11 +123,11 @@ public class StudyCenterActivity extends AppCompatActivity {
         );
         int learnedCount = StudyTaskHelper.countLearnedWords(db, currentUserId);
 
-        if (planManager.isTodayTaskComplete(currentUserId)) {
+        if (planManager.isTodayTaskComplete(currentUserId, dueReviewCount)) {
             tvStartTodayDescription.setText("今日学习任务已全部完成，可以继续自由学习");
         } else {
             tvStartTodayDescription.setText(
-                    "先复习到期旧词（最多 " + remainingReview + " 个），"
+                    "先复习学习中的单词（第 2/4/8 天到期，最多 " + remainingReview + " 个），"
                             + "再学习新词（最多 " + remainingNew + " 个）"
             );
         }
@@ -154,13 +154,13 @@ public class StudyCenterActivity extends AppCompatActivity {
                 "每日新词 " + dailyNew + " 个 · 复习上限 " + dailyReview + " 个"
         );
 
-        boolean todayAvailable = !planManager.isTodayTaskComplete(currentUserId)
+        boolean todayAvailable = !planManager.isTodayTaskComplete(currentUserId, dueReviewCount)
                 && (remainingReview > 0 || remainingNew > 0);
 
         btnStartToday.setEnabled(todayAvailable);
         btnStartToday.setAlpha(todayAvailable ? 1f : 0.55f);
 
-        if (planManager.isTodayTaskComplete(currentUserId)) {
+        if (planManager.isTodayTaskComplete(currentUserId, dueReviewCount)) {
             btnStartToday.setText("今日任务已完成");
         } else if (remainingReview <= 0 && remainingNew > 0) {
             btnStartToday.setText("今日学习任务（仅新词 " + remainingNew + " 个）");
@@ -203,7 +203,11 @@ public class StudyCenterActivity extends AppCompatActivity {
     private void startTodayTask() {
         planManager.ensureToday(currentUserId);
 
-        if (planManager.isTodayTaskComplete(currentUserId)) {
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        long now = System.currentTimeMillis();
+        int dueReview = StudyTaskHelper.countDueReviewWords(db, currentUserId, now);
+
+        if (planManager.isTodayTaskComplete(currentUserId, dueReview)) {
             Toast.makeText(this, "今日学习任务已全部完成", Toast.LENGTH_SHORT).show();
             refreshLearningInfo();
             return;
@@ -211,10 +215,6 @@ public class StudyCenterActivity extends AppCompatActivity {
 
         int remainingReview = planManager.getRemainingReviewQuota(currentUserId);
         int remainingNew = planManager.getRemainingNewQuota(currentUserId);
-
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        long now = System.currentTimeMillis();
-        int dueReview = StudyTaskHelper.countDueReviewWords(db, currentUserId, now);
 
         if (remainingReview <= 0 && remainingNew <= 0) {
             Toast.makeText(this, "今日学习任务已全部完成", Toast.LENGTH_SHORT).show();
@@ -230,7 +230,7 @@ public class StudyCenterActivity extends AppCompatActivity {
                 return;
             }
         } else if (remainingReview > 0 && dueReview <= 0 && remainingNew <= 0) {
-            Toast.makeText(this, "当前没有到期复习词，今日复习任务已完成", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "当前没有到期的学习中单词，今日复习任务已完成", Toast.LENGTH_SHORT).show();
             refreshLearningInfo();
             return;
         } else if (remainingReview > 0 && dueReview <= 0 && remainingNew > 0) {

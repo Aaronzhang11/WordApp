@@ -147,7 +147,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
-                    android:text="「开始学习」中每天最多复习的旧词数量（20-200）"
+                    android:text="「今日学习任务」中每天最多复习的学习中单词数量（20-200）"
                     android:textColor="#718096"
                     android:textSize="13sp" />
 

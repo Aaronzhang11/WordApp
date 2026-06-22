@@ -88,8 +88,7 @@ public class StudyActivity extends AppCompatActivity {
     // 当前正在学习第几个单词
     private int currentIndex = 0;
 
-    // 艾宾浩斯记忆曲线：三个复习级别对应 1 天、3 天、7 天记忆等级
-    // 理想时间线（学习日为第 1 天）：第 2 天 / 第 4 天 / 第 8 天复习
+    // 艾宾浩斯记忆曲线：学习日为第 1 天，复习安排在第 2 / 4 / 8 天
     private static final long ONE_DAY_MS = 24L * 60 * 60 * 1000;
     private static final long SEVEN_DAYS_MS = 7L * ONE_DAY_MS;
 
@@ -241,7 +240,8 @@ public class StudyActivity extends AppCompatActivity {
                             + "JOIN ecdict e ON s.word = e.word "
                             + "WHERE s.user_id = ? "
                             + "AND s.is_ignored = 0 "
-                            + "AND s.master_level > 0 "
+                            + "AND s.master_level >= " + StudyTaskHelper.LEVEL_REVIEW_FIRST + " "
+                            + "AND s.master_level < " + StudyTaskHelper.LEVEL_MASTERED + " "
                             + "AND s.next_review_time <= ? "
                             + "ORDER BY s.next_review_time ASC "
                             + "LIMIT ?",
@@ -437,43 +437,59 @@ public class StudyActivity extends AppCompatActivity {
 
     /**
      * 根据 master_level 更新正面徽章、背面说明和进度条颜色。
+     * 0=陌生，1-3=学习中三次复习，4=已掌握。
      */
     private void updateLevelIndicator(int rawLevel) {
-        int level = Math.max(0, Math.min(3, rawLevel));
+        int level = Math.max(0, rawLevel);
+        int progress = Math.min(3, StudyTaskHelper.isMastered(level) ? 3 : level);
 
         String badgeText;
         String detailText;
         int textColor;
         int backgroundColor;
 
-        switch (level) {
-            case 0:
-                badgeText = "等级 0 · 待学习";
-                detailText = "当前掌握程度：0级 · 新词，首次复习安排在第 2 天";
-                textColor = Color.parseColor("#475569");
-                backgroundColor = Color.parseColor("#E2E8F0");
-                break;
+        if (StudyTaskHelper.isMastered(level)) {
+            badgeText = "已掌握";
+            detailText = "三次复习已全部完成，该单词已标记为已掌握";
+            textColor = Color.parseColor("#15803D");
+            backgroundColor = Color.parseColor("#DCFCE7");
+        } else {
+            switch (level) {
+                case 0:
+                    badgeText = "陌生 · 待学习";
+                    detailText = "当前掌握程度：陌生词，首次学习后第 2 天进行第 1 次复习";
+                    textColor = Color.parseColor("#475569");
+                    backgroundColor = Color.parseColor("#E2E8F0");
+                    break;
 
-            case 1:
-                badgeText = "等级 1 · 1 天级";
-                detailText = "当前掌握程度：1级 · 首次复习，答对后 2 天进入第二次复习";
-                textColor = Color.parseColor("#2563EB");
-                backgroundColor = Color.parseColor("#DBEAFE");
-                break;
+                case StudyTaskHelper.LEVEL_REVIEW_FIRST:
+                    badgeText = "学习中 · 第 1 次复习";
+                    detailText = "学习后第 2 天复习，答对后第 4 天进行第 2 次复习";
+                    textColor = Color.parseColor("#2563EB");
+                    backgroundColor = Color.parseColor("#DBEAFE");
+                    break;
 
-            case 2:
-                badgeText = "等级 2 · 3 天级";
-                detailText = "当前掌握程度：2级 · 第二次复习，答对后 4 天进入第三次复习";
-                textColor = Color.parseColor("#C2410C");
-                backgroundColor = Color.parseColor("#FFEDD5");
-                break;
+                case StudyTaskHelper.LEVEL_REVIEW_SECOND:
+                    badgeText = "学习中 · 第 2 次复习";
+                    detailText = "第 4 天复习，答对后第 8 天进行第 3 次复习";
+                    textColor = Color.parseColor("#C2410C");
+                    backgroundColor = Color.parseColor("#FFEDD5");
+                    break;
 
-            default:
-                badgeText = "等级 3 · 7 天级";
-                detailText = "当前掌握程度：3级 · 已掌握，按 7 天周期长期复习";
-                textColor = Color.parseColor("#15803D");
-                backgroundColor = Color.parseColor("#DCFCE7");
-                break;
+                case StudyTaskHelper.LEVEL_REVIEW_THIRD:
+                    badgeText = "学习中 · 第 3 次复习";
+                    detailText = "第 8 天复习，答对后将标记为已掌握";
+                    textColor = Color.parseColor("#7C3AED");
+                    backgroundColor = Color.parseColor("#EDE9FE");
+                    break;
+
+                default:
+                    badgeText = "学习中";
+                    detailText = "按记忆曲线复习中";
+                    textColor = Color.parseColor("#2563EB");
+                    backgroundColor = Color.parseColor("#DBEAFE");
+                    break;
+            }
         }
 
         // 正面等级徽章
@@ -486,12 +502,16 @@ public class StudyActivity extends AppCompatActivity {
         tvLevelDetail.setTextColor(textColor);
         tvLevelDetail.setBackground(createRoundedDrawable(backgroundColor, 14));
 
-        // 进度条显示 0 / 3、1 / 3、2 / 3、3 / 3
+        // 进度条：陌生 0/3，三次复习 1/3、2/3、3/3，已掌握 3/3
         progressLevel.setMax(3);
-        progressLevel.setProgress(level);
+        progressLevel.setProgress(progress);
         progressLevel.setProgressTintList(ColorStateList.valueOf(textColor));
 
-        tvProgressText.setText("掌握进度 " + level + " / 3");
+        tvProgressText.setText(
+                StudyTaskHelper.isMastered(level)
+                        ? "掌握进度 3 / 3 · 已掌握"
+                        : "掌握进度 " + progress + " / 3"
+        );
         tvProgressText.setTextColor(textColor);
     }
 
@@ -604,16 +624,16 @@ public class StudyActivity extends AppCompatActivity {
     }
 
     /**
-     * 答对后按目标记忆等级安排下次复习间隔。
-     * 以学习日为第 1 天：升至 1 级 → 第 2 天，升至 2 级 → 第 4 天，升至 3 级 → 第 8 天。
+     * 答对后按目标记忆等级安排下次复习间隔（学习日为第 1 天）。
+     * 升至 1 级 → 第 2 天，升至 2 级 → 第 4 天，升至 3 级 → 第 8 天。
      */
     private long getSuccessIntervalMs(int targetLevel) {
         switch (targetLevel) {
-            case 1:
+            case StudyTaskHelper.LEVEL_REVIEW_FIRST:
                 return ONE_DAY_MS;
-            case 2:
+            case StudyTaskHelper.LEVEL_REVIEW_SECOND:
                 return 2L * ONE_DAY_MS;
-            case 3:
+            case StudyTaskHelper.LEVEL_REVIEW_THIRD:
                 return 4L * ONE_DAY_MS;
             default:
                 return SEVEN_DAYS_MS;
@@ -625,10 +645,10 @@ public class StudyActivity extends AppCompatActivity {
      */
     private long getFallIntervalMs(int fallenLevel) {
         switch (fallenLevel) {
-            case 0:
-            case 1:
+            case StudyTaskHelper.LEVEL_UNFAMILIAR:
+            case StudyTaskHelper.LEVEL_REVIEW_FIRST:
                 return ONE_DAY_MS;
-            case 2:
+            case StudyTaskHelper.LEVEL_REVIEW_SECOND:
                 return 2L * ONE_DAY_MS;
             default:
                 return 4L * ONE_DAY_MS;
@@ -643,11 +663,9 @@ public class StudyActivity extends AppCompatActivity {
     }
 
     /**
-     * 点击“认识”或“不认识”后更新掌握等级和复习时间。
+     * 点击「认识」或「不认识」后更新掌握等级和复习时间。
      *
-     * 记忆曲线安排：
-     * - 认识：升一级，按 1 天 / 3 天 / 7 天安排下次复习
-     * - 不认识：跌落一级，按跌落后的等级间隔重新安排
+     * 记忆曲线：第 2 / 4 / 8 天三次复习，全部完成后升至已掌握（level 4）。
      */
     private void processAnswer(boolean knew) {
         if (studyQueue.isEmpty() || currentIndex >= studyQueue.size()) {
@@ -660,16 +678,19 @@ public class StudyActivity extends AppCompatActivity {
         long interval;
 
         if (knew) {
-            if (item.level >= 3) {
-                // 已掌握词再次认识：保持 3 级，按 7 天周期长期复习
-                nextLevel = 3;
+            if (StudyTaskHelper.isMastered(item.level)) {
+                nextLevel = StudyTaskHelper.LEVEL_MASTERED;
                 interval = SEVEN_DAYS_MS;
             } else {
                 nextLevel = item.level + 1;
-                interval = getSuccessIntervalMs(nextLevel);
+                if (nextLevel >= StudyTaskHelper.LEVEL_MASTERED) {
+                    nextLevel = StudyTaskHelper.LEVEL_MASTERED;
+                    interval = SEVEN_DAYS_MS;
+                } else {
+                    interval = getSuccessIntervalMs(nextLevel);
+                }
             }
         } else {
-            // 答错：跌落一级，按跌落后的记忆等级安排复习
             nextLevel = getFallenLevel(item.level);
             interval = getFallIntervalMs(nextLevel);
         }
@@ -711,11 +732,11 @@ public class StudyActivity extends AppCompatActivity {
             );
         }
 
-        // 今日任务模式：记录每日进度（复习词 level>0，新词 level==0）
+        // 今日任务模式：记录每日进度（学习中单词为复习，陌生词为新词）
         if (MODE_TODAY.equals(studyMode)) {
-            if (item.level > 0) {
+            if (StudyTaskHelper.isLearningInProgress(item.level)) {
                 planManager.incrementTodayReviewCompleted(currentUserId);
-            } else {
+            } else if (item.level == StudyTaskHelper.LEVEL_UNFAMILIAR) {
                 planManager.incrementTodayNewCompleted(currentUserId);
             }
         }

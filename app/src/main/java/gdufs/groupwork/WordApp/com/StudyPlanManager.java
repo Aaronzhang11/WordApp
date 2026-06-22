@@ -145,6 +145,17 @@ public class StudyPlanManager {
 
     /**
      * 今日「开始学习」任务是否已全部完成。
+     *
+     * @param dueLearningReviewCount 当前到期待复习的学习中单词数；为 0 时视为复习配额已满足
+     */
+    public boolean isTodayTaskComplete(int userId, int dueLearningReviewCount) {
+        boolean reviewSatisfied = getRemainingReviewQuota(userId) <= 0
+                || dueLearningReviewCount <= 0;
+        return getRemainingNewQuota(userId) <= 0 && reviewSatisfied;
+    }
+
+    /**
+     * 今日「开始学习」任务是否已全部完成（不考虑到期复习词，兼容旧调用）。
      */
     public boolean isTodayTaskComplete(int userId) {
         return getRemainingNewQuota(userId) <= 0 && getRemainingReviewQuota(userId) <= 0;

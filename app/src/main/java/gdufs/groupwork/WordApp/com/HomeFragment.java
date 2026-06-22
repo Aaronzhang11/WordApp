@@ -175,48 +175,22 @@ public class HomeFragment extends Fragment {
 
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         long now = System.currentTimeMillis();
-        int dueReviewCount = countDueReviewInCurrentBook(db, userId, now);
+        VocabBookManager.VocabBook book = vocabBookManager.getCurrentBook(userId);
+        int dueReviewCount = StudyTaskHelper.countDueReviewWords(
+                db, userId, now, book.tags
+        );
 
         tvTodayDueHint.setText(
-                "到期待复习 " + dueReviewCount + " 词 · 剩余配额 复习 "
+                "学习中待复习 " + dueReviewCount + " 词 · 剩余配额 复习 "
                         + remainingReview + " · 新词 " + remainingNew
         );
 
-        if (planManager.isTodayTaskComplete(userId)) {
+        if (planManager.isTodayTaskComplete(userId, dueReviewCount)) {
             tvTodayTaskStatus.setText("已完成");
             tvTodayTaskStatus.setVisibility(View.VISIBLE);
         } else {
             tvTodayTaskStatus.setVisibility(View.GONE);
         }
-    }
-
-    /**
-     * 统计当前词书内到期待复习的单词数量。
-     */
-    private int countDueReviewInCurrentBook(SQLiteDatabase db, int userId, long now) {
-        VocabBookManager.VocabBook book = vocabBookManager.getCurrentBook(userId);
-        VocabBookManager.TagFilter filter = VocabBookManager.buildTagFilter(book.tags, "e");
-
-        String sql = "SELECT COUNT(*) FROM study_record s "
-                + "JOIN ecdict e ON s.word = e.word "
-                + "WHERE s.user_id = ? AND s.is_ignored = 0 "
-                + "AND s.master_level > 0 AND s.next_review_time <= ? AND "
-                + filter.whereClause;
-
-        String[] args = new String[filter.args.length + 2];
-        args[0] = String.valueOf(userId);
-        args[1] = String.valueOf(now);
-        System.arraycopy(filter.args, 0, args, 2, filter.args.length);
-
-        Cursor cursor = db.rawQuery(sql, args);
-        int count = 0;
-
-        if (cursor.moveToFirst()) {
-            count = cursor.getInt(0);
-        }
-
-        cursor.close();
-        return count;
     }
 
     /**

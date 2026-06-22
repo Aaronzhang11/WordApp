@@ -358,7 +358,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:lineSpacingExtra="2dp"
-                    android:text="到期待复习 0 词 · 剩余新词配额 0"
+                    android:text="学习中待复习 0 词 · 剩余新词配额 0"
                     android:textColor="#718096"
                     android:textSize="13sp" />
 

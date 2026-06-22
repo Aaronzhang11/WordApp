@@ -95,7 +95,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:lineSpacingExtra="4dp"
-                    android:text="按设置完成今日复习与新词任务"
+                    android:text="按记忆曲线复习学习中单词，再完成新词任务"
                     android:textColor="#718096"
                     android:textSize="14sp" />
 

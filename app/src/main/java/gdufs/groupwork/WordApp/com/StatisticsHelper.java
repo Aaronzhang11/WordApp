@@ -58,9 +58,9 @@ public class StatisticsHelper {
 
             if (level == 0) {
                 data.unlearned = count;
-            } else if (level == 1 || level == 2) {
+            } else if (StudyTaskHelper.isLearningInProgress(level)) {
                 data.learning += count;
-            } else if (level >= 3) {
+            } else if (StudyTaskHelper.isMastered(level)) {
                 data.mastered += count;
             }
         }
