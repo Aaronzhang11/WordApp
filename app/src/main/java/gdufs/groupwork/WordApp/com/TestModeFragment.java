@@ -5,14 +5,13 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 /**
- * 模拟测试模块：复用 activity_test_mode 布局与原有交互逻辑。
+ * 模拟测试模块
  */
 public class TestModeFragment extends Fragment {
 
@@ -23,15 +22,12 @@ public class TestModeFragment extends Fragment {
     private View btnEnglishToChinese;
     private View btnListening;
 
-    /**
-     * 创建 Fragment 实例。
-     *
-     * @param standalone 是否为独立 Activity 模式（显示返回按钮）
-     */
     public static TestModeFragment newInstance(boolean standalone) {
         TestModeFragment fragment = new TestModeFragment();
+
         Bundle args = new Bundle();
         args.putBoolean(ARG_STANDALONE, standalone);
+
         fragment.setArguments(args);
         return fragment;
     }
@@ -47,7 +43,10 @@ public class TestModeFragment extends Fragment {
     }
 
     @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+    public void onViewCreated(
+            @NonNull View view,
+            @Nullable Bundle savedInstanceState
+    ) {
         super.onViewCreated(view, savedInstanceState);
 
         boolean standalone = getArguments() != null
@@ -59,6 +58,7 @@ public class TestModeFragment extends Fragment {
         btnListening = view.findViewById(R.id.btnListening);
 
         if (standalone) {
+            btnBack.setVisibility(View.VISIBLE);
             btnBack.setOnClickListener(v -> requireActivity().finish());
         } else {
             btnBack.setVisibility(View.GONE);
@@ -72,16 +72,13 @@ public class TestModeFragment extends Fragment {
                 startQuiz(QuizActivity.MODE_ENGLISH_TO_CHINESE)
         );
 
-        btnListening.setOnClickListener(v -> Toast.makeText(
-                requireContext(),
-                "听力模式正在优化中，暂未开放",
-                Toast.LENGTH_SHORT
-        ).show());
+        // 听写测试入口
+        btnListening.setOnClickListener(v -> {
+            Intent intent = new Intent(requireContext(), DictationActivity.class);
+            startActivity(intent);
+        });
     }
 
-    /**
-     * 按指定模式进入测验页。
-     */
     private void startQuiz(String quizMode) {
         Intent intent = new Intent(requireContext(), QuizActivity.class);
         intent.putExtra(QuizActivity.EXTRA_QUIZ_MODE, quizMode);

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#F6F8FC"
@@ -10,253 +9,174 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingLeft="16dp"
+        android:paddingStart="22dp"
         android:paddingTop="18dp"
-        android:paddingRight="16dp"
-        android:paddingBottom="28dp">
+        android:paddingEnd="22dp"
+        android:paddingBottom="24dp">
 
-        <!-- 顶部栏 -->
+        <TextView
+            android:id="@+id/btnBack"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
+            android:text="‹ 返回"
+            android:textColor="#2F5E97"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_test_info"
+            android:elevation="2dp"
+            android:orientation="vertical"
+            android:padding="18dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnBack"
-                android:layout_width="72dp"
-                android:layout_height="46dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:text="返回"
-                android:textAllCaps="false"
-                android:textColor="#2C5282"
-                android:textSize="15sp"
-                app:backgroundTint="#FFFFFF"
-                app:cornerRadius="14dp"
-                app:strokeColor="#D8E2F0"
-                app:strokeWidth="1dp" />
-
-            <LinearLayout
-                android:layout_width="0dp"
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
+                android:text="本次模拟测试"
+                android:textColor="#2B5E98"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="选择测试模式"
-                    android:textColor="#1F3B5B"
-                    android:textSize="23sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
-                    android:text="选择一种方式开始本次模拟测试"
-                    android:textColor="#718096"
-                    android:textSize="13sp" />
-
-            </LinearLayout>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:lineSpacingExtra="3dp"
+                android:text="完成全部题目后会保存成绩；中途退出不会记录。"
+                android:textColor="#65809F"
+                android:textSize="14sp" />
 
         </LinearLayout>
 
-        <!-- 提示卡片 -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            app:cardBackgroundColor="#EAF2FC"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="0dp"
-            app:strokeColor="#C8DCF3"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="18dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="本次模拟测试"
-                    android:textColor="#2C5282"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="7dp"
-                    android:lineSpacingExtra="4dp"
-                    android:text="看中选英和看英选中模式均已开放。完成全部题目后会保存成绩；中途退出不会记录。"
-                    android:textColor="#4A6682"
-                    android:textSize="14sp" />
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
         <!-- 看中选英 -->
-        <com.google.android.material.card.MaterialCardView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            app:cardBackgroundColor="#FFFFFF"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="2dp"
-            app:strokeColor="#D9E5F2"
-            app:strokeWidth="1dp">
+            android:layout_marginTop="26dp"
+            android:background="@drawable/bg_test_card"
+            android:elevation="3dp"
+            android:orientation="vertical"
+            android:padding="24dp">
 
-            <LinearLayout
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="看中选英"
+                android:textColor="#203756"
+                android:textSize="25sp"
+                android:textStyle="bold" />
+
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
+                android:layout_marginTop="12dp"
+                android:lineSpacingExtra="3dp"
+                android:text="根据中文释义，在四个英文单词中选择正确答案。"
+                android:textColor="#71829A"
+                android:textSize="16sp" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="看中选英"
-                    android:textColor="#1F2937"
-                    android:textSize="21sp"
-                    android:textStyle="bold" />
+            <Button
+                android:id="@+id/btnChineseToEnglish"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:layout_marginTop="22dp"
+                android:backgroundTint="#2F5E97"
+                android:text="开始看中选英"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"
+                android:textStyle="bold" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="9dp"
-                    android:lineSpacingExtra="4dp"
-                    android:text="根据中文释义，在四个英文单词中选择正确答案。"
-                    android:textColor="#718096"
-                    android:textSize="14sp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnChineseToEnglish"
-                    android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="20dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:text="开始看中选英"
-                    android:textAllCaps="false"
-                    android:textColor="@android:color/white"
-                    android:textSize="16sp"
-                    app:backgroundTint="#2C5282"
-                    app:cornerRadius="14dp" />
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
         <!-- 看英选中 -->
-        <com.google.android.material.card.MaterialCardView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            app:cardBackgroundColor="#FFFFFF"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="2dp"
-            app:strokeColor="#D9E5F2"
-            app:strokeWidth="1dp">
+            android:layout_marginTop="18dp"
+            android:background="@drawable/bg_test_card"
+            android:elevation="3dp"
+            android:orientation="vertical"
+            android:padding="24dp">
 
-            <LinearLayout
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="看英选中"
+                android:textColor="#203756"
+                android:textSize="25sp"
+                android:textStyle="bold" />
+
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
+                android:layout_marginTop="12dp"
+                android:lineSpacingExtra="3dp"
+                android:text="根据英文单词，在四个中文释义中选择正确答案。"
+                android:textColor="#71829A"
+                android:textSize="16sp" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="看英选中"
-                    android:textColor="#1F2937"
-                    android:textSize="21sp"
-                    android:textStyle="bold" />
+            <Button
+                android:id="@+id/btnEnglishToChinese"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:layout_marginTop="22dp"
+                android:backgroundTint="#2F5E97"
+                android:text="开始看英选中"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"
+                android:textStyle="bold" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="9dp"
-                    android:lineSpacingExtra="4dp"
-                    android:text="根据英文单词，在四个中文释义中选择正确答案。"
-                    android:textColor="#718096"
-                    android:textSize="14sp" />
+        </LinearLayout>
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnEnglishToChinese"
-                    android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="20dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:text="开始看英选中"
-                    android:textAllCaps="false"
-                    android:textColor="@android:color/white"
-                    android:textSize="16sp"
-                    app:backgroundTint="#2C5282"
-                    app:cornerRadius="14dp" />
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- 听力模式 -->
-        <com.google.android.material.card.MaterialCardView
+        <!-- 听写 -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            app:cardBackgroundColor="#FFFFFF"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="1dp"
-            app:strokeColor="#E2E8F0"
-            app:strokeWidth="1dp">
+            android:layout_marginTop="18dp"
+            android:background="@drawable/bg_test_card"
+            android:elevation="3dp"
+            android:orientation="vertical"
+            android:padding="24dp">
 
-            <LinearLayout
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="听力"
+                android:textColor="#203756"
+                android:textSize="25sp"
+                android:textStyle="bold" />
+
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
+                android:layout_marginTop="12dp"
+                android:lineSpacingExtra="3dp"
+                android:text="播放英文单词发音，根据听到的内容完成拼写测试。"
+                android:textColor="#71829A"
+                android:textSize="16sp" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="听力"
-                    android:textColor="#1F2937"
-                    android:textSize="21sp"
-                    android:textStyle="bold" />
+            <Button
+                android:id="@+id/btnListening"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:layout_marginTop="22dp"
+                android:backgroundTint="#2F5E97"
+                android:clickable="true"
+                android:enabled="true"
+                android:text="开始听力"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"
+                android:textStyle="bold" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="9dp"
-                    android:lineSpacingExtra="4dp"
-                    android:text="播放在线英语发音，根据听到的内容完成拼写测试。"
-                    android:textColor="#718096"
-                    android:textSize="14sp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnListening"
-                    android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="20dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:text="听力模式（待优化）"
-                    android:textAllCaps="false"
-                    android:textColor="#64748B"
-                    android:textSize="16sp"
-                    app:backgroundTint="#EEF2F7"
-                    app:cornerRadius="14dp" />
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
     </LinearLayout>
 
