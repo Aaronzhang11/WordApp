@@ -663,9 +663,19 @@ public class StudyActivity extends AppCompatActivity {
     }
 
     /**
-     * 点击「认识」或「不认识」后更新掌握等级和复习时间。
+     * 点击“认识”或“不认识”后：
      *
-     * 记忆曲线：第 2 / 4 / 8 天三次复习，全部完成后升至已掌握（level 4）。
+     * 1. 更新 study_record 中的掌握等级和下次复习时间；
+     * 2. 写入 study_history，记录真实学习行为；
+     * 3. 更新今日任务进度；
+     * 4. 显示下一张单词卡。
+     *
+     * 记忆曲线：
+     * level 0：陌生词
+     * level 1：第 1 次复习阶段
+     * level 2：第 2 次复习阶段
+     * level 3：第 3 次复习阶段
+     * level 4：已掌握
      */
     private void processAnswer(boolean knew) {
         if (studyQueue.isEmpty() || currentIndex >= studyQueue.size()) {
@@ -674,15 +684,26 @@ public class StudyActivity extends AppCompatActivity {
 
         WordItem item = studyQueue.get(currentIndex);
 
+        /*
+         * 保存操作前等级。
+         *
+         * study_history 需要同时记录：
+         * old_level：操作前等级
+         * new_level：操作后等级
+         */
+        int oldLevel = item.level;
+
         int nextLevel;
         long interval;
 
+        // 点击“认识”
         if (knew) {
             if (StudyTaskHelper.isMastered(item.level)) {
                 nextLevel = StudyTaskHelper.LEVEL_MASTERED;
                 interval = SEVEN_DAYS_MS;
             } else {
                 nextLevel = item.level + 1;
+
                 if (nextLevel >= StudyTaskHelper.LEVEL_MASTERED) {
                     nextLevel = StudyTaskHelper.LEVEL_MASTERED;
                     interval = SEVEN_DAYS_MS;
@@ -691,15 +712,19 @@ public class StudyActivity extends AppCompatActivity {
                 }
             }
         } else {
+            // 点击“不认识”：掌握等级下降一级
             nextLevel = getFallenLevel(item.level);
+
             interval = getFallIntervalMs(nextLevel);
         }
 
-        long nextReviewTime = System.currentTimeMillis() + interval;
+        long nextReviewTime =
+                System.currentTimeMillis() + interval;
 
         SQLiteDatabase db = dbHelper.getWritableDatabase();
 
         ContentValues values = new ContentValues();
+
         values.put("user_id", currentUserId);
         values.put("word", item.word);
         values.put("master_level", nextLevel);
@@ -712,36 +737,106 @@ public class StudyActivity extends AppCompatActivity {
             values.put("error_count", 1);
         }
 
-        int rows = db.update(
-                "study_record",
-                values,
-                "user_id = ? AND word = ?",
-                new String[]{
-                        String.valueOf(currentUserId),
-                        item.word
-                }
-        );
+        boolean savedSuccessfully = false;
 
-        // 理论上已有记录；这里保留兜底逻辑
-        if (rows == 0) {
-            db.insertWithOnConflict(
+        /*
+         * 使用事务：
+         *
+         * study_record 更新成功
+         * study_history 写入成功
+         *
+         * 两者要么同时成功，要么同时失败。
+         */
+        db.beginTransaction();
+
+        try {
+            int rows = db.update(
                     "study_record",
-                    null,
                     values,
-                    SQLiteDatabase.CONFLICT_IGNORE
+                    "user_id = ? AND word = ?",
+                    new String[]{
+                            String.valueOf(currentUserId),
+                            item.word
+                    }
             );
+
+            if (rows > 0) {
+                savedSuccessfully = true;
+            } else {
+                /*
+                 * 理论上单词已经在 study_record 中。
+                 * 这里保留兜底逻辑，避免异常情况导致学习失败。
+                 */
+                long insertResult = db.insertWithOnConflict(
+                        "study_record",
+                        null,
+                        values,
+                        SQLiteDatabase.CONFLICT_IGNORE
+                );
+
+                savedSuccessfully = insertResult != -1;
+            }
+
+            /*
+             * 只有学习状态更新成功后，
+             * 才写入真实学习历史。
+             */
+            if (savedSuccessfully) {
+                boolean historySaved =
+                        StudyHistoryHelper.recordStudy(
+                                db,
+                                currentUserId,
+                                item.word,
+                                knew,
+                                oldLevel,
+                                nextLevel
+                        );
+
+                /*
+                 * 学习历史写入失败时，
+                 * 不提交事务，避免“等级变了但统计没有记录”。
+                 */
+                if (!historySaved) {
+                    savedSuccessfully = false;
+                    return;
+                }
+            }
+
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
         }
 
-        // 今日任务模式：记录每日进度（学习中单词为复习，陌生词为新词）
+        /*
+         * 数据库更新失败时，不切换下一张卡片。
+         *
+         * 用户可以重新点击一次。
+         */
+        if (!savedSuccessfully) {
+            Toast.makeText(
+                    this,
+                    "学习记录保存失败，请重试",
+                    Toast.LENGTH_SHORT
+            ).show();
+
+            return;
+        }
+
+        /*
+         * 今日任务模式下，继续保留你原来的
+         * 新词 / 复习任务计数逻辑。
+         */
         if (MODE_TODAY.equals(studyMode)) {
             if (StudyTaskHelper.isLearningInProgress(item.level)) {
                 planManager.incrementTodayReviewCompleted(currentUserId);
-            } else if (item.level == StudyTaskHelper.LEVEL_UNFAMILIAR) {
+            } else if (item.level
+                    == StudyTaskHelper.LEVEL_UNFAMILIAR) {
                 planManager.incrementTodayNewCompleted(currentUserId);
             }
         }
 
         currentIndex++;
+
         showCurrentWord();
     }
 

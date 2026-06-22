@@ -11,26 +11,55 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+/**
+ * SQLite 数据库管理类。
+ *
+ * 本次新增：
+ * study_history 表
+ *
+ * 该表用于记录用户每一次真实学习行为：
+ * - 点击“认识”
+ * - 点击“不认识”
+ *
+ * 用于修复：
+ * - 今日学习数量
+ * - 连续学习天数
+ * - 近 7 天学习趋势
+ */
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "word_app.db";
-    private static final int DATABASE_VERSION = 3;
+
+    /*
+     * 数据库版本从 3 升级为 4。
+     *
+     * 已安装旧版本 App 的用户，会触发 onUpgrade()，
+     * 并自动创建 study_history 表。
+     */
+    private static final int DATABASE_VERSION = 4;
 
     private final Context context;
     private final String dbPath;
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
+
         this.context = context;
         this.dbPath = context.getDatabasePath(DATABASE_NAME).getPath();
 
         try {
             copyDatabaseIfNeeded();
         } catch (IOException e) {
-            throw new RuntimeException("复制 assets 中的 word_app.db 失败，请检查 app/src/main/assets/word_app.db 是否存在", e);
+            throw new RuntimeException(
+                    "复制 assets 中的 word_app.db 失败，请检查 app/src/main/assets/word_app.db 是否存在",
+                    e
+            );
         }
     }
 
+    /**
+     * 首次运行时，把 assets 中的基础词库数据库复制到 App 私有数据库目录。
+     */
     private void copyDatabaseIfNeeded() throws IOException {
         File dbFile = new File(dbPath);
 
@@ -39,6 +68,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
 
         File dbDir = dbFile.getParentFile();
+
         if (dbDir != null && !dbDir.exists()) {
             dbDir.mkdirs();
         }
@@ -61,6 +91,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onConfigure(SQLiteDatabase db) {
         super.onConfigure(db);
+
+        // 启用外键约束
         db.setForeignKeyConstraintsEnabled(true);
     }
 
@@ -72,114 +104,199 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onOpen(SQLiteDatabase db) {
         super.onOpen(db);
+
+        /*
+         * 即使用户已有旧数据库，
+         * 每次打开时也会检查并补齐缺失表。
+         */
         createUserTables(db);
     }
 
+    /**
+     * 创建所有用户相关表。
+     */
     private void createUserTables(SQLiteDatabase db) {
 
-        // 1. 本地用户表：不是云端账号，只用于本机区分不同用户的数据
-        db.execSQL("CREATE TABLE IF NOT EXISTS user_info (" +
-                "user_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "username TEXT UNIQUE NOT NULL, " +
-                "password_hash TEXT NOT NULL, " +
-                "create_time INTEGER NOT NULL, " +
-                "last_login_time INTEGER DEFAULT 0)");
+        // 1. 本地账户表
+        db.execSQL(
+                "CREATE TABLE IF NOT EXISTS user_info ("
+                        + "user_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                        + "username TEXT UNIQUE NOT NULL, "
+                        + "password_hash TEXT NOT NULL, "
+                        + "create_time INTEGER NOT NULL, "
+                        + "last_login_time INTEGER DEFAULT 0)"
+        );
 
-        // 插入默认游客用户，避免游客模式 user_id = 0 找不到对应用户
-        db.execSQL("INSERT OR IGNORE INTO user_info " +
-                "(user_id, username, password_hash, create_time, last_login_time) " +
-                "VALUES (0, 'guest', 'guest', 0, 0)");
+        // 默认游客用户
+        db.execSQL(
+                "INSERT OR IGNORE INTO user_info "
+                        + "(user_id, username, password_hash, create_time, last_login_time) "
+                        + "VALUES (0, 'guest', 'guest', 0, 0)"
+        );
 
-        // 2. 学习记录表：新数据库会按这个结构创建
-        db.execSQL("CREATE TABLE IF NOT EXISTS study_record (" +
-                "record_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "user_id INTEGER NOT NULL DEFAULT 0, " +
-                "word TEXT NOT NULL, " +
-                "master_level INTEGER DEFAULT 0, " +
-                "next_review_time INTEGER DEFAULT 0, " +
-                "error_count INTEGER DEFAULT 0, " +
-                "is_ignored INTEGER DEFAULT 0, " +
-                "UNIQUE(user_id, word), " +
-                "FOREIGN KEY(user_id) REFERENCES user_info(user_id) ON DELETE CASCADE, " +
-                "FOREIGN KEY(word) REFERENCES ecdict(word))");
+        // 2. 单词学习状态表
+        db.execSQL(
+                "CREATE TABLE IF NOT EXISTS study_record ("
+                        + "record_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                        + "user_id INTEGER NOT NULL DEFAULT 0, "
+                        + "word TEXT NOT NULL, "
+                        + "master_level INTEGER DEFAULT 0, "
+                        + "next_review_time INTEGER DEFAULT 0, "
+                        + "error_count INTEGER DEFAULT 0, "
+                        + "is_ignored INTEGER DEFAULT 0, "
+                        + "UNIQUE(user_id, word), "
+                        + "FOREIGN KEY(user_id) REFERENCES user_info(user_id) ON DELETE CASCADE, "
+                        + "FOREIGN KEY(word) REFERENCES ecdict(word))"
+        );
 
-        // 3. 单词本表：新数据库会按这个结构创建
-        db.execSQL("CREATE TABLE IF NOT EXISTS word_book (" +
-                "book_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "user_id INTEGER NOT NULL DEFAULT 0, " +
-                "book_name TEXT NOT NULL, " +
-                "create_time INTEGER NOT NULL, " +
-                "UNIQUE(user_id, book_name), " +
-                "FOREIGN KEY(user_id) REFERENCES user_info(user_id) ON DELETE CASCADE)");
+        // 3. 用户收藏单词本表
+        db.execSQL(
+                "CREATE TABLE IF NOT EXISTS word_book ("
+                        + "book_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                        + "user_id INTEGER NOT NULL DEFAULT 0, "
+                        + "book_name TEXT NOT NULL, "
+                        + "create_time INTEGER NOT NULL, "
+                        + "UNIQUE(user_id, book_name), "
+                        + "FOREIGN KEY(user_id) REFERENCES user_info(user_id) ON DELETE CASCADE)"
+        );
 
-        // 4. 单词本和单词的关联表
-        db.execSQL("CREATE TABLE IF NOT EXISTS book_word_relation (" +
-                "relation_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "book_id INTEGER NOT NULL, " +
-                "word TEXT NOT NULL, " +
-                "add_time INTEGER NOT NULL, " +
-                "UNIQUE(book_id, word), " +
-                "FOREIGN KEY(book_id) REFERENCES word_book(book_id) ON DELETE CASCADE, " +
-                "FOREIGN KEY(word) REFERENCES ecdict(word))");
+        // 4. 收藏词与单词本关系表
+        db.execSQL(
+                "CREATE TABLE IF NOT EXISTS book_word_relation ("
+                        + "relation_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                        + "book_id INTEGER NOT NULL, "
+                        + "word TEXT NOT NULL, "
+                        + "add_time INTEGER NOT NULL, "
+                        + "UNIQUE(book_id, word), "
+                        + "FOREIGN KEY(book_id) REFERENCES word_book(book_id) ON DELETE CASCADE, "
+                        + "FOREIGN KEY(word) REFERENCES ecdict(word))"
+        );
 
-        // 5. 测试记录表：新数据库会按这个结构创建
-        db.execSQL("CREATE TABLE IF NOT EXISTS test_record (" +
-                "test_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "user_id INTEGER NOT NULL DEFAULT 0, " +
-                "test_type TEXT NOT NULL, " +
-                "total_questions INTEGER NOT NULL, " +
-                "correct_count INTEGER NOT NULL, " +
-                "test_date INTEGER NOT NULL, " +
-                "FOREIGN KEY(user_id) REFERENCES user_info(user_id) ON DELETE CASCADE)");
+        // 5. 测试记录表
+        db.execSQL(
+                "CREATE TABLE IF NOT EXISTS test_record ("
+                        + "test_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                        + "user_id INTEGER NOT NULL DEFAULT 0, "
+                        + "test_type TEXT NOT NULL, "
+                        + "total_questions INTEGER NOT NULL, "
+                        + "correct_count INTEGER NOT NULL, "
+                        + "test_date INTEGER NOT NULL, "
+                        + "FOREIGN KEY(user_id) REFERENCES user_info(user_id) ON DELETE CASCADE)"
+        );
 
-        // 6. 词书表：按 ECDICT 标签自定义学习范围
-        db.execSQL("CREATE TABLE IF NOT EXISTS vocab_book (" +
-                "book_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "user_id INTEGER NOT NULL DEFAULT 0, " +
-                "book_name TEXT NOT NULL, " +
-                "tags TEXT NOT NULL, " +
-                "create_time INTEGER NOT NULL, " +
-                "UNIQUE(user_id, book_name), " +
-                "FOREIGN KEY(user_id) REFERENCES user_info(user_id) ON DELETE CASCADE)");
+        // 6. 自定义学习词书表
+        db.execSQL(
+                "CREATE TABLE IF NOT EXISTS vocab_book ("
+                        + "book_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                        + "user_id INTEGER NOT NULL DEFAULT 0, "
+                        + "book_name TEXT NOT NULL, "
+                        + "tags TEXT NOT NULL, "
+                        + "create_time INTEGER NOT NULL, "
+                        + "UNIQUE(user_id, book_name), "
+                        + "FOREIGN KEY(user_id) REFERENCES user_info(user_id) ON DELETE CASCADE)"
+        );
 
         /*
-         * 关键修复：
-         * 如果 assets/word_app.db 里已经有旧版 study_record / word_book / test_record，
-         * CREATE TABLE IF NOT EXISTS 不会修改旧表结构。
-         * 所以这里手动检查旧表是否缺 user_id，缺就 ALTER TABLE 添加。
+         * 7. 新增：真实学习历史表
+         *
+         * 一次点击“认识”或“不认识”对应一条记录。
+         *
+         * 注意：
+         * next_review_time 只表示未来复习时间；
+         * study_time 才表示用户实际学习发生的时间。
+         */
+        db.execSQL(
+                "CREATE TABLE IF NOT EXISTS study_history ("
+                        + "history_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                        + "user_id INTEGER NOT NULL, "
+                        + "word TEXT NOT NULL, "
+                        + "study_time INTEGER NOT NULL, "
+                        + "result TEXT NOT NULL, "
+                        + "old_level INTEGER NOT NULL, "
+                        + "new_level INTEGER NOT NULL, "
+                        + "FOREIGN KEY(user_id) REFERENCES user_info(user_id) ON DELETE CASCADE, "
+                        + "FOREIGN KEY(word) REFERENCES ecdict(word))"
+        );
+
+        /*
+         * 给“按用户 + 时间统计”建立索引。
+         *
+         * 首页今日学习、连续天数、趋势图都会频繁使用这两个字段。
+         */
+        db.execSQL(
+                "CREATE INDEX IF NOT EXISTS idx_study_history_user_time "
+                        + "ON study_history(user_id, study_time)"
+        );
+
+        db.execSQL(
+                "CREATE INDEX IF NOT EXISTS idx_study_history_word_time "
+                        + "ON study_history(word, study_time)"
+        );
+
+        /*
+         * 兼容旧数据库：
+         * 老版本的部分表可能缺少 user_id。
          */
         upgradeOldUserTables(db);
     }
 
     /**
-     * 兼容旧数据库表结构：
-     * 旧版 study_record / word_book / test_record 可能没有 user_id。
+     * 兼容旧数据库表结构。
      */
     private void upgradeOldUserTables(SQLiteDatabase db) {
-        addColumnIfNotExists(db, "study_record", "user_id", "INTEGER NOT NULL DEFAULT 0");
-        addColumnIfNotExists(db, "word_book", "user_id", "INTEGER NOT NULL DEFAULT 0");
-        addColumnIfNotExists(db, "test_record", "user_id", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfNotExists(
+                db,
+                "study_record",
+                "user_id",
+                "INTEGER NOT NULL DEFAULT 0"
+        );
+
+        addColumnIfNotExists(
+                db,
+                "word_book",
+                "user_id",
+                "INTEGER NOT NULL DEFAULT 0"
+        );
+
+        addColumnIfNotExists(
+                db,
+                "test_record",
+                "user_id",
+                "INTEGER NOT NULL DEFAULT 0"
+        );
     }
 
     /**
-     * 如果某个表缺少某列，就添加该列
+     * 如果表中缺少字段，则自动添加。
      */
-    private void addColumnIfNotExists(SQLiteDatabase db, String tableName, String columnName, String columnType) {
+    private void addColumnIfNotExists(
+            SQLiteDatabase db,
+            String tableName,
+            String columnName,
+            String columnType
+    ) {
         if (!tableExists(db, tableName)) {
             return;
         }
 
         if (!columnExists(db, tableName, columnName)) {
-            db.execSQL("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnType);
+            db.execSQL(
+                    "ALTER TABLE " + tableName
+                            + " ADD COLUMN "
+                            + columnName
+                            + " "
+                            + columnType
+            );
         }
     }
 
     /**
-     * 判断表是否存在
+     * 判断表是否存在。
      */
     private boolean tableExists(SQLiteDatabase db, String tableName) {
         Cursor cursor = db.rawQuery(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                "SELECT name FROM sqlite_master "
+                        + "WHERE type='table' AND name=?",
                 new String[]{tableName}
         );
 
@@ -190,15 +307,24 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * 判断某个表里是否有某个字段
+     * 判断某个字段是否存在。
      */
-    private boolean columnExists(SQLiteDatabase db, String tableName, String columnName) {
-        Cursor cursor = db.rawQuery("PRAGMA table_info(" + tableName + ")", null);
+    private boolean columnExists(
+            SQLiteDatabase db,
+            String tableName,
+            String columnName
+    ) {
+        Cursor cursor = db.rawQuery(
+                "PRAGMA table_info(" + tableName + ")",
+                null
+        );
 
         boolean exists = false;
 
         while (cursor.moveToNext()) {
-            String name = cursor.getString(cursor.getColumnIndexOrThrow("name"));
+            String name = cursor.getString(
+                    cursor.getColumnIndexOrThrow("name")
+            );
 
             if (columnName.equals(name)) {
                 exists = true;
@@ -212,7 +338,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * 判断用户名是否已经存在
+     * 判断用户名是否已经存在。
      */
     public boolean isUsernameExists(String username) {
         SQLiteDatabase db = getReadableDatabase();
@@ -229,9 +355,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * 注册本地用户
+     * 注册本地用户。
      */
-    public boolean registerUser(String username, String passwordHash) {
+    public boolean registerUser(
+            String username,
+            String passwordHash
+    ) {
         if (isUsernameExists(username)) {
             return false;
         }
@@ -250,13 +379,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * 检查登录是否成功
+     * 检查登录是否成功。
      */
-    public boolean checkLogin(String username, String passwordHash) {
+    public boolean checkLogin(
+            String username,
+            String passwordHash
+    ) {
         SQLiteDatabase db = getReadableDatabase();
 
         Cursor cursor = db.rawQuery(
-                "SELECT user_id FROM user_info WHERE username = ? AND password_hash = ?",
+                "SELECT user_id FROM user_info "
+                        + "WHERE username = ? AND password_hash = ?",
                 new String[]{username, passwordHash}
         );
 
@@ -271,7 +404,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * 根据用户名获取 user_id
+     * 根据用户名获取 user_id。
      */
     public int getUserIdByUsername(String username) {
         SQLiteDatabase db = getReadableDatabase();
@@ -293,7 +426,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * 根据 user_id 获取用户名
+     * 根据 user_id 获取用户名。
      */
     public String getUsernameById(int userId) {
         SQLiteDatabase db = getReadableDatabase();
@@ -315,7 +448,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * 更新最后登录时间
+     * 更新最后登录时间。
      */
     private void updateLastLoginTime(String username) {
         SQLiteDatabase db = getWritableDatabase();
@@ -332,7 +465,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     @Override
-    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+    public void onUpgrade(
+            SQLiteDatabase db,
+            int oldVersion,
+            int newVersion
+    ) {
         createUserTables(db);
     }
 }
