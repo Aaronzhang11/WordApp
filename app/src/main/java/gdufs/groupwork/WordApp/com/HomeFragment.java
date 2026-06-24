@@ -4,6 +4,9 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.AbsoluteSizeSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,6 +28,11 @@ import java.util.List;
  */
 public class HomeFragment extends Fragment {
 
+    /** Welcome 前缀字号，与词典、单词本标题一致 */
+    private static final int WELCOME_TEXT_SIZE_SP = 23;
+    /** 用户名字号，略大于 Welcome */
+    private static final int USERNAME_TEXT_SIZE_SP = 28;
+
     private TextView tvCurrentBookName;
     private TextView tvBookWordCount;
     private TextView tvBookProgress;
@@ -36,6 +44,7 @@ public class HomeFragment extends Fragment {
     private ProgressBar progressTodayReview;
     private ProgressBar progressTodayNew;
     private MaterialButton btnProfileAvatar;
+    private TextView tvWelcomeUser;
 
     private DatabaseHelper dbHelper;
     private UserSessionManager sessionManager;
@@ -77,9 +86,9 @@ public class HomeFragment extends Fragment {
             loadDashboard();
 
             if (btnProfileAvatar != null) {
-                btnProfileAvatar.setText(
-                        getAvatarText(sessionManager.getCurrentUsername())
-                );
+                String username = sessionManager.getCurrentUsername();
+                btnProfileAvatar.setText(getAvatarText(username));
+                updateWelcomeText(username);
             }
         }
     }
@@ -99,9 +108,11 @@ public class HomeFragment extends Fragment {
         progressTodayReview = view.findViewById(R.id.progressTodayReview);
         progressTodayNew = view.findViewById(R.id.progressTodayNew);
         btnProfileAvatar = view.findViewById(R.id.btnProfileAvatar);
+        tvWelcomeUser = view.findViewById(R.id.tvWelcomeUser);
 
         String username = sessionManager.getCurrentUsername();
 
+        updateWelcomeText(username);
         btnProfileAvatar.setText(getAvatarText(username));
         btnProfileAvatar.setContentDescription("打开用户信息：" + username);
 
@@ -256,6 +267,32 @@ public class HomeFragment extends Fragment {
                 .setView(dialogView)
                 .setPositiveButton("关闭", null)
                 .show();
+    }
+
+    /**
+     * 更新顶部欢迎语，展示当前登录用户名。
+     */
+    private void updateWelcomeText(String username) {
+        if (tvWelcomeUser == null) {
+            return;
+        }
+
+        if (username == null || username.trim().isEmpty()) {
+            tvWelcomeUser.setText("Welcome");
+            return;
+        }
+
+        String name = username.trim();
+        String text = "Welcome " + name;
+        SpannableString spannable = new SpannableString(text);
+        int nameStart = "Welcome ".length();
+        spannable.setSpan(
+                new AbsoluteSizeSpan(USERNAME_TEXT_SIZE_SP, true),
+                nameStart,
+                text.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        );
+        tvWelcomeUser.setText(spannable);
     }
 
     /**

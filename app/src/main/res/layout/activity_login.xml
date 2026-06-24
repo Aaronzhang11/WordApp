@@ -10,21 +10,32 @@
         android:orientation="vertical"
         android:padding="28dp">
 
+        <!-- 应用名称：中文 -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="本地单词本"
-            android:textSize="30sp"
+            android:text="万词王"
+            android:textSize="50sp"
             android:textStyle="bold"
             android:textColor="@color/colorPrimary"
             android:gravity="center"
             android:layout_marginTop="70dp"
+            android:layout_marginBottom="4dp" />
+
+        <!-- 应用名称：英文 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="King of Words"
+            android:textSize="18sp"
+            android:textColor="@color/colorPrimary"
+            android:gravity="center"
             android:layout_marginBottom="8dp" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="登录本地账号，管理自己的学习记录"
+            android:text="本地英语词汇学习软件 · 登录账号管理学习记录"
             android:textSize="14sp"
             android:textColor="@color/textSecondary"
             android:gravity="center"
