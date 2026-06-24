@@ -290,54 +290,67 @@ public class StudyActivity extends AppCompatActivity {
 
     /**
      * 学习新词模式：随机追加一个陌生单词。
+     * 排除当前会话队列中已出现过的单词，避免「不认识」后等级仍为 0 时被重复抽到。
      */
     private boolean appendRandomUnfamiliarWord() {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
-        Cursor cursor = db.rawQuery(
-                "SELECT e.word, e.phonetic, e.translation, s.master_level "
-                        + "FROM study_record s "
-                        + "JOIN ecdict e ON s.word = e.word "
-                        + "WHERE s.user_id = ? "
-                        + "AND s.is_ignored = 0 "
-                        + "AND s.master_level = 0 "
-                        + "ORDER BY RANDOM() "
-                        + "LIMIT 1",
-                new String[]{String.valueOf(currentUserId)}
-        );
-
-        if (cursor.moveToNext()) {
-            studyQueue.add(buildWordItem(cursor));
-            cursor.close();
+        WordItem found = queryRandomUnfamiliarWord(db);
+        if (found != null) {
+            studyQueue.add(found);
             return true;
         }
-
-        cursor.close();
 
         if (StudyTaskHelper.generateNewWords(db, currentUserId, 1, currentBookTags) <= 0) {
             return false;
         }
 
-        Cursor retryCursor = db.rawQuery(
+        found = queryRandomUnfamiliarWord(db);
+        if (found != null) {
+            studyQueue.add(found);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 从陌生词中随机取一个词，跳过当前学习队列里已经出现过的单词。
+     */
+    private WordItem queryRandomUnfamiliarWord(SQLiteDatabase db) {
+        StringBuilder sql = new StringBuilder(
                 "SELECT e.word, e.phonetic, e.translation, s.master_level "
                         + "FROM study_record s "
                         + "JOIN ecdict e ON s.word = e.word "
                         + "WHERE s.user_id = ? "
                         + "AND s.is_ignored = 0 "
-                        + "AND s.master_level = 0 "
-                        + "ORDER BY RANDOM() "
-                        + "LIMIT 1",
-                new String[]{String.valueOf(currentUserId)}
-        );
+                        + "AND s.master_level = 0 ");
 
-        if (retryCursor.moveToNext()) {
-            studyQueue.add(buildWordItem(retryCursor));
-            retryCursor.close();
-            return true;
+        List<String> args = new ArrayList<>();
+        args.add(String.valueOf(currentUserId));
+
+        if (!studyQueue.isEmpty()) {
+            sql.append("AND s.word NOT IN (");
+            for (int i = 0; i < studyQueue.size(); i++) {
+                if (i > 0) {
+                    sql.append(", ");
+                }
+                sql.append("?");
+                args.add(studyQueue.get(i).word);
+            }
+            sql.append(") ");
         }
 
-        retryCursor.close();
-        return false;
+        sql.append("ORDER BY RANDOM() LIMIT 1");
+
+        Cursor cursor = db.rawQuery(sql.toString(), args.toArray(new String[0]));
+
+        WordItem item = null;
+        if (cursor.moveToNext()) {
+            item = buildWordItem(cursor);
+        }
+        cursor.close();
+        return item;
     }
 
     private int countUnfamiliarInPlan(SQLiteDatabase db) {
