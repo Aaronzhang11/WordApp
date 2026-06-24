@@ -32,7 +32,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 词典模块：复用 activity_search 布局与原有检索逻辑。
+ * 词典模块：
+ * 支持英文查中文、中文查英文、查看单词详情、收藏到单词本。
  */
 public class SearchFragment extends Fragment {
 
@@ -40,34 +41,56 @@ public class SearchFragment extends Fragment {
 
     private View btnBack;
     private View btnClearSearch;
+
     private EditText etSearchInput;
     private ListView lvSearchResults;
+
     private TextView tvSearchHint;
     private TextView tvEmpty;
 
     private DatabaseHelper dbHelper;
     private UserSessionManager sessionManager;
+
     private int currentUserId;
 
+    // 当前搜索结果列表
     private final List<SearchResult> resultList = new ArrayList<>();
+
+    // ListView 适配器
     private SearchResultAdapter resultAdapter;
 
+    /**
+     * 单条搜索结果的数据对象。
+     */
     private static class SearchResult {
         String word;
         String phonetic;
         String translation;
     }
 
+    /**
+     * 单词本选择对象。
+     */
     private static class BookChoice {
         int bookId;
         String bookName;
     }
 
+    /**
+     * 创建 SearchFragment。
+     *
+     * @param standalone 是否作为独立页面打开。
+     *                   true：显示返回按钮；
+     *                   false：作为底部导航栏页面，隐藏返回按钮。
+     */
     public static SearchFragment newInstance(boolean standalone) {
         SearchFragment fragment = new SearchFragment();
+
         Bundle args = new Bundle();
         args.putBoolean(ARG_STANDALONE, standalone);
+
         fragment.setArguments(args);
+
         return fragment;
     }
 
@@ -82,18 +105,23 @@ public class SearchFragment extends Fragment {
     }
 
     @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+    public void onViewCreated(
+            @NonNull View view,
+            @Nullable Bundle savedInstanceState
+    ) {
         super.onViewCreated(view, savedInstanceState);
 
         dbHelper = new DatabaseHelper(requireContext());
         sessionManager = new UserSessionManager(requireContext());
+
+        // 当前登录用户，用于加载和创建其个人单词本
         currentUserId = sessionManager.getCurrentUserId();
 
         initViews(view);
     }
 
     /**
-     * 绑定词典页控件与事件。
+     * 初始化词典页面控件及事件。
      */
     private void initViews(View view) {
         boolean standalone = getArguments() != null
@@ -101,39 +129,70 @@ public class SearchFragment extends Fragment {
 
         btnBack = view.findViewById(R.id.btnBack);
         btnClearSearch = view.findViewById(R.id.btnClearSearch);
+
         etSearchInput = view.findViewById(R.id.etSearchInput);
         lvSearchResults = view.findViewById(R.id.lvSearchResults);
+
         tvSearchHint = view.findViewById(R.id.tvSearchHint);
         tvEmpty = view.findViewById(R.id.tvEmpty);
 
         resultAdapter = new SearchResultAdapter();
+
         lvSearchResults.setAdapter(resultAdapter);
         lvSearchResults.setDivider(null);
         lvSearchResults.setDividerHeight(0);
 
+        /*
+         * 独立页面显示返回按钮；
+         * 底部导航栏使用时隐藏返回按钮。
+         */
         if (standalone) {
-            btnBack.setOnClickListener(v -> requireActivity().finish());
+            btnBack.setVisibility(View.VISIBLE);
+
+            btnBack.setOnClickListener(v ->
+                    requireActivity().finish()
+            );
         } else {
             btnBack.setVisibility(View.GONE);
         }
 
+        /*
+         * 清空搜索框。
+         */
         btnClearSearch.setOnClickListener(v -> {
             etSearchInput.setText("");
             etSearchInput.requestFocus();
         });
 
+        /*
+         * ListView 整行点击后进入单词详情页。
+         */
         lvSearchResults.setOnItemClickListener((parent, itemView, position, id) -> {
             SearchResult item = resultList.get(position);
             openWordDetail(item.word);
         });
 
+        /*
+         * 监听输入框变化，实现实时搜索。
+         */
         etSearchInput.addTextChangedListener(new TextWatcher() {
+
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            public void beforeTextChanged(
+                    CharSequence s,
+                    int start,
+                    int count,
+                    int after
+            ) {
             }
 
             @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            public void onTextChanged(
+                    CharSequence s,
+                    int start,
+                    int before,
+                    int count
+            ) {
                 performQuery(s.toString().trim());
             }
 
@@ -145,16 +204,25 @@ public class SearchFragment extends Fragment {
         showInitialState();
     }
 
+    /**
+     * 显示词典初始状态。
+     */
     private void showInitialState() {
         tvSearchHint.setText("支持英文单词匹配与中文释义模糊检索");
+
         tvEmpty.setText("输入英文单词或中文释义\n开始查询词典");
         tvEmpty.setVisibility(View.VISIBLE);
+
         lvSearchResults.setVisibility(View.GONE);
+
         btnClearSearch.setVisibility(View.INVISIBLE);
     }
 
     /**
-     * 根据关键词执行词典检索。
+     * 根据输入关键词查询本地 ECDICT 词库。
+     *
+     * 输入包含中文：查询 translation 字段。
+     * 输入不含中文：查询 word 字段，优先前缀匹配。
      */
     private void performQuery(String query) {
         resultList.clear();
@@ -170,26 +238,40 @@ public class SearchFragment extends Fragment {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         Cursor cursor;
 
+        // 判断输入中是否包含中文字符
         boolean containsChinese = query.matches(".*[\\u4E00-\\u9FFF].*");
 
         if (containsChinese) {
+            /*
+             * 中文查英文：
+             * 在 translation 字段中进行模糊匹配。
+             */
             cursor = db.rawQuery(
-                    "SELECT word, phonetic, translation " +
-                            "FROM ecdict " +
-                            "WHERE translation LIKE ? " +
-                            "ORDER BY word COLLATE NOCASE " +
-                            "LIMIT 50",
+                    "SELECT word, phonetic, translation "
+                            + "FROM ecdict "
+                            + "WHERE translation LIKE ? "
+                            + "ORDER BY word COLLATE NOCASE "
+                            + "LIMIT 50",
                     new String[]{"%" + query + "%"}
             );
+
         } else {
+            /*
+             * 英文查中文：
+             * 同时支持：
+             * 1. 前缀匹配：sec%
+             * 2. 包含匹配：%sec%
+             *
+             * CASE WHEN 让前缀匹配的结果优先显示。
+             */
             cursor = db.rawQuery(
-                    "SELECT word, phonetic, translation " +
-                            "FROM ecdict " +
-                            "WHERE word LIKE ? OR word LIKE ? " +
-                            "ORDER BY " +
-                            "CASE WHEN word LIKE ? THEN 0 ELSE 1 END, " +
-                            "LENGTH(word), word COLLATE NOCASE " +
-                            "LIMIT 50",
+                    "SELECT word, phonetic, translation "
+                            + "FROM ecdict "
+                            + "WHERE word LIKE ? OR word LIKE ? "
+                            + "ORDER BY "
+                            + "CASE WHEN word LIKE ? THEN 0 ELSE 1 END, "
+                            + "LENGTH(word), word COLLATE NOCASE "
+                            + "LIMIT 50",
                     new String[]{
                             query + "%",
                             "%" + query + "%",
@@ -200,6 +282,7 @@ public class SearchFragment extends Fragment {
 
         while (cursor.moveToNext()) {
             SearchResult item = new SearchResult();
+
             item.word = safeText(cursor.getString(0));
             item.phonetic = safeText(cursor.getString(1));
             item.translation = safeText(cursor.getString(2));
@@ -215,31 +298,48 @@ public class SearchFragment extends Fragment {
 
         if (resultList.isEmpty()) {
             tvSearchHint.setText("没有找到匹配结果");
+
             tvEmpty.setText("没有找到相关单词\n试试更短的关键词或其他释义");
             tvEmpty.setVisibility(View.VISIBLE);
+
             lvSearchResults.setVisibility(View.GONE);
+
         } else {
             tvSearchHint.setText(
                     "找到 " + resultList.size() + " 个结果 · 点击卡片查看详情"
             );
+
             tvEmpty.setVisibility(View.GONE);
             lvSearchResults.setVisibility(View.VISIBLE);
         }
     }
 
+    /**
+     * 处理数据库字段可能为空的情况。
+     */
     private String safeText(String value) {
         return value == null ? "" : value.trim();
     }
 
+    /**
+     * 打开单词详情页。
+     */
     private void openWordDetail(String word) {
-        Intent intent = new Intent(requireContext(), WordDetailActivity.class);
+        Intent intent = new Intent(
+                requireContext(),
+                WordDetailActivity.class
+        );
+
         intent.putExtra(WordDetailActivity.EXTRA_WORD, word);
+
         startActivity(intent);
     }
 
+    /**
+     * 弹出选择单词本窗口。
+     */
     private void showBookPicker(String word) {
         List<BookChoice> books = loadBookChoices();
-
         List<String> optionNames = new ArrayList<>();
 
         for (BookChoice book : books) {
@@ -250,38 +350,47 @@ public class SearchFragment extends Fragment {
 
         new AlertDialog.Builder(requireContext())
                 .setTitle("收藏「" + word + "」")
-                .setItems(optionNames.toArray(new String[0]), (dialog, which) -> {
-                    if (which == books.size()) {
-                        showCreateBookAndCollectDialog(word);
-                    } else {
-                        BookChoice selectedBook = books.get(which);
-                        addWordToBook(
-                                selectedBook.bookId,
-                                selectedBook.bookName,
-                                word
-                        );
-                    }
-                })
+                .setItems(
+                        optionNames.toArray(new String[0]),
+                        (dialog, which) -> {
+                            if (which == books.size()) {
+                                showCreateBookAndCollectDialog(word);
+                            } else {
+                                BookChoice selectedBook = books.get(which);
+
+                                addWordToBook(
+                                        selectedBook.bookId,
+                                        selectedBook.bookName,
+                                        word
+                                );
+                            }
+                        }
+                )
                 .show();
     }
 
+    /**
+     * 加载当前用户的所有单词本。
+     */
     private List<BookChoice> loadBookChoices() {
         List<BookChoice> books = new ArrayList<>();
 
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
         Cursor cursor = db.rawQuery(
-                "SELECT book_id, book_name " +
-                        "FROM word_book " +
-                        "WHERE user_id = ? " +
-                        "ORDER BY create_time DESC",
+                "SELECT book_id, book_name "
+                        + "FROM word_book "
+                        + "WHERE user_id = ? "
+                        + "ORDER BY create_time DESC",
                 new String[]{String.valueOf(currentUserId)}
         );
 
         while (cursor.moveToNext()) {
             BookChoice book = new BookChoice();
+
             book.bookId = cursor.getInt(0);
             book.bookName = safeText(cursor.getString(1));
+
             books.add(book);
         }
 
@@ -290,15 +399,21 @@ public class SearchFragment extends Fragment {
         return books;
     }
 
+    /**
+     * 创建新单词本，并自动收藏当前单词。
+     */
     private void showCreateBookAndCollectDialog(String word) {
         EditText input = new EditText(requireContext());
+
         input.setSingleLine(true);
         input.setHint("例如：四级易错词");
         input.setPadding(dp(12), dp(6), dp(12), dp(6));
 
         LinearLayout container = new LinearLayout(requireContext());
+
         container.setOrientation(LinearLayout.VERTICAL);
         container.setPadding(dp(24), dp(6), dp(24), 0);
+
         container.addView(
                 input,
                 new LinearLayout.LayoutParams(
@@ -326,12 +441,14 @@ public class SearchFragment extends Fragment {
                                     "请输入单词本名称",
                                     Toast.LENGTH_SHORT
                             ).show();
+
                             return;
                         }
 
                         SQLiteDatabase db = dbHelper.getWritableDatabase();
 
                         ContentValues values = new ContentValues();
+
                         values.put("user_id", currentUserId);
                         values.put("book_name", bookName);
                         values.put("create_time", System.currentTimeMillis());
@@ -346,6 +463,7 @@ public class SearchFragment extends Fragment {
                         int bookId;
 
                         if (result == -1) {
+                            // 同名单词本已存在，查询它的 ID
                             bookId = findBookIdByName(bookName);
 
                             if (bookId == -1) {
@@ -354,6 +472,7 @@ public class SearchFragment extends Fragment {
                                         "创建单词本失败",
                                         Toast.LENGTH_SHORT
                                 ).show();
+
                                 return;
                             }
                         } else {
@@ -361,6 +480,7 @@ public class SearchFragment extends Fragment {
                         }
 
                         addWordToBook(bookId, bookName, word);
+
                         createDialog.dismiss();
                     });
         });
@@ -368,12 +488,15 @@ public class SearchFragment extends Fragment {
         createDialog.show();
     }
 
+    /**
+     * 根据当前用户和单词本名称查找单词本 ID。
+     */
     private int findBookIdByName(String bookName) {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
         Cursor cursor = db.rawQuery(
-                "SELECT book_id FROM word_book " +
-                        "WHERE user_id = ? AND book_name = ?",
+                "SELECT book_id FROM word_book "
+                        + "WHERE user_id = ? AND book_name = ?",
                 new String[]{
                         String.valueOf(currentUserId),
                         bookName
@@ -391,14 +514,26 @@ public class SearchFragment extends Fragment {
         return bookId;
     }
 
-    private void addWordToBook(int bookId, String bookName, String word) {
+    /**
+     * 将单词加入指定单词本。
+     */
+    private void addWordToBook(
+            int bookId,
+            String bookName,
+            String word
+    ) {
         SQLiteDatabase db = dbHelper.getWritableDatabase();
 
         ContentValues values = new ContentValues();
+
         values.put("book_id", bookId);
         values.put("word", word);
         values.put("add_time", System.currentTimeMillis());
 
+        /*
+         * 如果同一个词已经在这个单词本中，
+         * CONFLICT_IGNORE 会阻止重复插入。
+         */
         long result = db.insertWithOnConflict(
                 "book_word_relation",
                 null,
@@ -421,12 +556,21 @@ public class SearchFragment extends Fragment {
         }
     }
 
+    /**
+     * dp 转 px。
+     */
     private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
+        return Math.round(
+                value * getResources().getDisplayMetrics().density
+        );
     }
 
+    /**
+     * 创建搜索结果卡片。
+     */
     private MaterialCardView createCard() {
         MaterialCardView card = new MaterialCardView(requireContext());
+
         card.setCardBackgroundColor(0xFFFFFFFF);
         card.setCardElevation(dp(1));
         card.setRadius(dp(16));
@@ -438,7 +582,7 @@ public class SearchFragment extends Fragment {
     }
 
     /**
-     * 检索结果列表适配器。
+     * 搜索结果列表适配器。
      */
     private class SearchResultAdapter extends BaseAdapter {
 
@@ -458,13 +602,22 @@ public class SearchFragment extends Fragment {
         }
 
         @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
+        public View getView(
+                int position,
+                View convertView,
+                ViewGroup parent
+        ) {
             ResultHolder holder;
 
             if (convertView == null) {
+                /*
+                 * 每一条 ListView 项目的最外层容器。
+                 */
                 LinearLayout wrapper = new LinearLayout(requireContext());
+
                 wrapper.setOrientation(LinearLayout.VERTICAL);
                 wrapper.setPadding(0, dp(5), 0, dp(5));
+
                 wrapper.setLayoutParams(
                         new AbsListView.LayoutParams(
                                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -475,24 +628,40 @@ public class SearchFragment extends Fragment {
                 MaterialCardView card = createCard();
 
                 LinearLayout content = new LinearLayout(requireContext());
+
                 content.setOrientation(LinearLayout.HORIZONTAL);
                 content.setGravity(Gravity.CENTER_VERTICAL);
-                content.setPadding(dp(16), dp(14), dp(10), dp(14));
+                content.setPadding(
+                        dp(16),
+                        dp(14),
+                        dp(10),
+                        dp(14)
+                );
 
+                /*
+                 * 左侧：单词、音标、中文释义。
+                 */
                 LinearLayout textContainer = new LinearLayout(requireContext());
+
                 textContainer.setOrientation(LinearLayout.VERTICAL);
 
                 TextView tvWord = new TextView(requireContext());
+
                 tvWord.setTextColor(0xFF1F3B5B);
                 tvWord.setTextSize(19);
-                tvWord.setTypeface(null, android.graphics.Typeface.BOLD);
+                tvWord.setTypeface(
+                        null,
+                        android.graphics.Typeface.BOLD
+                );
 
                 TextView tvPhonetic = new TextView(requireContext());
+
                 tvPhonetic.setTextColor(0xFF718096);
                 tvPhonetic.setTextSize(13);
                 tvPhonetic.setPadding(0, dp(4), 0, 0);
 
                 TextView tvTranslation = new TextView(requireContext());
+
                 tvTranslation.setTextColor(0xFF4A5568);
                 tvTranslation.setTextSize(14);
                 tvTranslation.setPadding(0, dp(7), 0, 0);
@@ -512,23 +681,47 @@ public class SearchFragment extends Fragment {
                         )
                 );
 
-                MaterialButton btnFavorite = new MaterialButton(requireContext());
+                /*
+                 * 右侧收藏按钮。
+                 */
+                MaterialButton btnFavorite =
+                        new MaterialButton(requireContext());
+
                 btnFavorite.setText("收藏");
                 btnFavorite.setTextSize(13);
                 btnFavorite.setAllCaps(false);
                 btnFavorite.setTextColor(0xFF2C5282);
+
                 btnFavorite.setCornerRadius(dp(18));
                 btnFavorite.setInsetTop(0);
                 btnFavorite.setInsetBottom(0);
+
                 btnFavorite.setMinHeight(0);
                 btnFavorite.setMinWidth(0);
+
                 btnFavorite.setBackgroundTintList(
-                        android.content.res.ColorStateList.valueOf(0xFFE6EEF8)
+                        android.content.res.ColorStateList.valueOf(
+                                0xFFE6EEF8
+                        )
                 );
+
+                /*
+                 * 关键修复：
+                 * 收藏按钮仍然可点击，但不抢占 ListView 整行的焦点。
+                 *
+                 * 否则 ListView 的点击事件可能无法触发，
+                 * 导致点击卡片无法进入 WordDetailActivity。
+                 */
+                btnFavorite.setFocusable(false);
+                btnFavorite.setFocusableInTouchMode(false);
+                btnFavorite.setClickable(true);
 
                 content.addView(
                         btnFavorite,
-                        new LinearLayout.LayoutParams(dp(70), dp(38))
+                        new LinearLayout.LayoutParams(
+                                dp(70),
+                                dp(38)
+                        )
                 );
 
                 card.addView(content);
@@ -542,13 +735,16 @@ public class SearchFragment extends Fragment {
                 );
 
                 holder = new ResultHolder();
+
                 holder.tvWord = tvWord;
                 holder.tvPhonetic = tvPhonetic;
                 holder.tvTranslation = tvTranslation;
                 holder.btnFavorite = btnFavorite;
 
                 wrapper.setTag(holder);
+
                 convertView = wrapper;
+
             } else {
                 holder = (ResultHolder) convertView.getTag();
             }
@@ -561,7 +757,9 @@ public class SearchFragment extends Fragment {
                 holder.tvPhonetic.setVisibility(View.GONE);
             } else {
                 holder.tvPhonetic.setVisibility(View.VISIBLE);
-                holder.tvPhonetic.setText(formatPhonetic(item.phonetic));
+                holder.tvPhonetic.setText(
+                        formatPhonetic(item.phonetic)
+                );
             }
 
             if (item.translation.isEmpty()) {
@@ -572,12 +770,32 @@ public class SearchFragment extends Fragment {
                 );
             }
 
-            holder.btnFavorite.setOnClickListener(v -> showBookPicker(item.word));
+            /*
+             * 点击收藏按钮：
+             * 弹出单词本选择框，不进入详情页。
+             */
+            holder.btnFavorite.setOnClickListener(v ->
+                    showBookPicker(item.word)
+            );
+
+            /*
+             * 关键修复：
+             * 给整条卡片增加点击兜底。
+             *
+             * 即使 ListView 的 OnItemClickListener 因子控件焦点问题
+             * 没有触发，点击单词卡片区域仍然可以进入详情页。
+             */
+            convertView.setOnClickListener(v ->
+                    openWordDetail(item.word)
+            );
 
             return convertView;
         }
     }
 
+    /**
+     * 统一格式化音标。
+     */
     private String formatPhonetic(String phonetic) {
         String value = phonetic.trim();
 
@@ -588,6 +806,9 @@ public class SearchFragment extends Fragment {
         return "/" + value + "/";
     }
 
+    /**
+     * 保存单条搜索结果卡片中的控件引用。
+     */
     private static class ResultHolder {
         TextView tvWord;
         TextView tvPhonetic;
